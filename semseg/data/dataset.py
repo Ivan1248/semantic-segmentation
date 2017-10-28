@@ -3,7 +3,7 @@ import numpy as np
 import random
 from abc import *
 
-import sys; sys.path.append('.')  # seems to be required to access sibling modules with "data." 
+import sys; sys.path.append('.')  # seems to be required in order to access sibling modules with "data." 
 from data.dataset_dir import load_images, load_labels, load_info
 
 
@@ -30,7 +30,7 @@ class Dataset:
         return len(self)
 
     @property
-    def image_shape(self) -> Tuple[int, int, int]:
+    def image_shape(self):
         return self.images[0].shape
 
     @property

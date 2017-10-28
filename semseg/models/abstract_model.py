@@ -1,22 +1,26 @@
-import datetime
-import os
-import processing
-import postprocessing
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops
-from util import file, console
-from util.display_window import DisplayWindow
-from data.dataset import Dataset
-from data.dataset_reader import MiniBatchReader
-from util.training_visitor import DummyTrainingVisitor
 import abc
 
+import sys; sys.path.append(sys.path[0] + "/../../../..")
+print(len(sys.path))
+for p in sys.path:
+    print(p)
+from .. import data
+from data import Dataset, MiniBatchReader
+from processing.labels import one_hot_to_dense, one_hot_to_dense
+from util import file
+from util.training_visitor import DummyTrainingVisitor
+
+
 class AbstractModel(object):
-    """ Suggested fixed hyperparameters: 
+    """ 
+        Suggested fixed hyperparameters: 
             activation: ReLU
-            optimizer: Adam/RMSProp/SGD
+            optimizer: SGD is good enough
     """
+
     def __init__(
             self,
             input_shape,  # maybe the network could accept variable image sizes
@@ -49,6 +53,7 @@ class AbstractModel(object):
             Saves the trained model as `file_path`.
             If `save_log == True`, `self.log` is saved as `file_path`+'.log'.
         """
+        import os
         file_path = os.path.join(file_path, str(self))
         if not os.path.exists(file_path):
             os.makedirs(file_path)
@@ -66,6 +71,18 @@ class AbstractModel(object):
         self._log("State loaded (" + str(self.epochs_completed) +
                   " epochs completed).")
 
+    def predict(self, images: list, probs=False):
+        """
+            Requires pixelwise-class probabilities to be the TensorFlow graph
+            node `self_probs`. Feel free to override if needed.
+        """
+        predict_probs = lambda im: self._run_session([self._probs], [im])[0]
+        probs = [predict_probs(im) for _, im in enumerate(images)]
+        if not probs:
+            return [one_hot_to_dense(p) for p in probs]
+        return probs
+
+    @abc.abstractmethod
     def train(self,
               train_data: Dataset,
               epoch_count: int = 1,
@@ -76,77 +93,26 @@ class AbstractModel(object):
             one backpropagation pass (with a mini-batch), ie. one update of all
             parameters.
         """
-        dr = MiniBatchReader(train_data, self._batch_size)
+        pass
 
-        self._log(
-            'Starting training and evaluation (epochs: {:.2f} ({} batches of size {} per epoch)))'
-            .format(epoch_count, dr.number_of_batches, self._batch_size))
-        alpha = 1 - \
-            2 ** (-0.005 * train_accuracy_log_period * self._batch_size)
-        abort = False
-
-        for ep in range(epoch_count):
-            if end:
-                break
-            self._log('Training:')
-            dr.reset(shuffle=True)
-            for b in range(dr.number_of_batches):
-                images, labels = dr.get_next_batch()
-                fetches = [self._train_step, self._cost, self._accuracy]
-                _, cost, batch_accuracy = self._run_session(
-                    fetches, images, labels)
-                if b % train_accuracy_log_period == 0:
-                    self.train_accuracy += alpha * \
-                        (batch_accuracy - self.train_accuracy)
-                    t = datetime.datetime.now().strftime('%H:%M:%S')
-                    self._log(
-                        t +
-                        ' epoch {:d}, step {:d}, cost {:.4f}, accuracy {:.3f} ~{:.3f}'
-                        .format(ep, b, cost, batch_accuracy,
-                                self.train_accuracy))
-
-                if visitor.minibatch_completed(b, images, labels) == True:
-                    end = True
-            if visitor.epoch_completed(ep, images, labels) == True:
-                end = True
-
+    @abc.abstractmethod
     def test(self, dataset: Dataset, evaluator=None):
-        if dataset is None:
-            dataset = self.test_data
-        self._log('Testing...')
-        cost_sum, accuracy_sum = 0, 0
-        dr = MiniBatchReader(dataset, self._batch_size)
-        for _ in range(dr.number_of_batches):
-            images, labels = dr.get_next_batch()
-            fetches = [self._cost, self._accuracy]
-            if evaluator is not None:
-                fetches += [self._out_soft]
-            foo = self._run_session(fetches, images, labels)
-            if evaluator is not None:
-                evaluator(foo[2])
-            cost_sum += foo[0]
-            accuracy_sum += foo[1]
-            interrupt = self._check_interrupt(images, labels)
-            if interrupt == 'b':
-                break
-        cost = cost_sum / dr.number_of_batches
-        accuracy = accuracy_sum / dr.number_of_batches
-        if dataset is self.test_data:
-            self.test_accuracy = accuracy
-        self._log('cost {:.4f}, accuracy {:.3f}: '.format(cost, accuracy))
+        pass
 
-    def predict(self, images: list, probs=False):
+    @property
+    @abc.abstractmethod
+    def _probs(self):
         """
-            Requires pixelwise-class probabilities to be the TensorFlow graph
-            node `self_probs`. Feel free to override if needed.
+            Returns the pixelwise-class probabilities (pixelwise softmax) graph
+            node.
         """
-        probs = [
-            self._run_session([self._probs], [images[i]])[0]  ## TODO: self._pr
-            for i in range(len(images))obs
-        ]
-        if not probs:
-            return [processing.one_hot_to_dense(r) for r in probs]
-        return probs
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def _y_true(self):
+        """ Returns the target one-hot labels graph node. """
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def _build_graph(self):
@@ -155,14 +121,14 @@ class AbstractModel(object):
             (assuming super().__init__(...) is called in the constructor of the
             subclass).
          """
-         pass
+        pass
 
-    def _run_session(self, fetches: list, images, labelings=None):
+    def _run_session(self, fetches: list, images, labels=None):
         feed_dict = {self.input: images}
-        if labelings is not None:
+        if labels is not None:
             feed_dict[self._y_true] = np.array([
-                processing.dense_to_one_hot(labelings[k], self._class_count)
-                for k in range(len(labelings))
+                dense_to_one_hot(labels[k], self._class_count)
+                for k in range(len(labels))
             ])
         return self._sess.run(fetches, feed_dict)
 

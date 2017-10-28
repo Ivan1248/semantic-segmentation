@@ -31,75 +31,6 @@ class Baseline1(AbstractModel):
         super().__init__(self, input_shape, class_count, batch_size, save_path,
                          name)
 
-    def __del__(self):
-        self._sess.close()
-        ops.reset_default_graph()
-
-    def __str__(self):
-        return self.name
-
-    def save_state(self, file_path, save_log=True):
-        file_path = os.path.join(file_path, str(self))
-        if not os.path.exists(file_path):
-            os.makedirs(file_path)
-        self._saver.save(self._sess, file_path)
-        file.write_all_text(path + ".log", "\n".join(self.log))
-        print("State saved as '" + file_path + "'.")
-        return file_path
-
-    def load_state(self, path):
-        self._saver.restore(self._sess, path)
-        try:
-            self.log = file.read_all_text(path + ".log")
-        except:
-            self.log = "Log file not found."
-        self._log("State loaded (" + str(self.epochs_completed) +
-                  " epochs completed).")
-
-    def train(self,
-              train_data: Dataset,
-              epoch_count: int = 1,
-              visitor=DummyTrainingVisitor()):
-        """
-            Training consist of epochs. An epoch is a pass through the whole 
-            training dataset. An epoch consists of backpropagation steps. A step
-            one backpropagation pass (with a mini-batch), ie. one update of all
-            parameters.
-        """
-        dr = MiniBatchReader(train_data, self._batch_size)
-
-        self._log(
-            'Starting training and evaluation (epochs: {:.2f} ({} batches of size {} per epoch)))'
-            .format(epoch_count, dr.number_of_batches, self._batch_size))
-        alpha = 1 - \
-            2 ** (-0.005 * train_accuracy_log_period * self._batch_size)
-        abort = False
-
-        for ep in range(epoch_count):
-            if end:
-                break
-            self._log('Training:')
-            dr.reset(shuffle=True)
-            for b in range(dr.number_of_batches):
-                images, labels = dr.get_next_batch()
-                fetches = [self._train_step, self._cost, self._accuracy]
-                _, cost, batch_accuracy = self._run_session(
-                    fetches, images, labels)
-                if b % train_accuracy_log_period == 0:
-                    self.train_accuracy += alpha * \
-                        (batch_accuracy - self.train_accuracy)
-                    t = datetime.datetime.now().strftime('%H:%M:%S')
-                    self._log(
-                        t +
-                        ' epoch {:d}, step {:d}, cost {:.4f}, accuracy {:.3f} ~{:.3f}'
-                        .format(ep, b, cost, batch_accuracy,
-                                self.train_accuracy))
-
-                if visitor.minibatch_completed(b, images, labels) == True:
-                    end = True
-            if visitor.epoch_completed(ep, images, labels) == True:
-                end = True
-
     def _build_graph(self):
         """ 
             Override this. It will be automatically called by the constructor
@@ -156,7 +87,7 @@ class Baseline1(AbstractModel):
             layer_depth(self.layer_count - 1) * self.stage_count,
             self._class_count)
         probs_small = pixelwise_softmax(conv2d(fm, w_fconv))
-        pred_soft = rescale(probs_small, 2**(self.layer_count - 1))
+        probs = rescale(probs_small, 2**(self.layer_count - 1))
 
         # Training and evaluation
         self._y_true = tf.placeholder(
@@ -164,27 +95,58 @@ class Baseline1(AbstractModel):
             shape=[None, self._shape[0], self._shape[1], self._class_count])
         self._cost = - \
             tf.reduce_mean(
-                self._y_true * tf.log(tf.clip_by_value(pred_soft, 1e-10, 1.0)))
+                self._y_true * tf.log(tf.clip_by_value(probs, 1e-10, 1.0)))
         self._train_step = self._optimizer.minimize(self._cost)
         correct_prediction = tf.equal(
-            tf.argmax(pred_soft, 3), tf.argmax(self._y_true, 3))
+            tf.argmax(probs, 3), tf.argmax(self._y_true, 3))
         self._accuracy = tf.reduce_mean(
             tf.cast(correct_prediction, tf.float32))
 
-        self._out_soft = pred_soft[0, :, :, :]
+        self._out_soft = probs[0, :, :, :]
 
-    def _run_session(self, fetches: list, images, labelings=None):
-        feed_dict = {self.input: images}
-        if labelings is not None:
-            feed_dict[self._y_true] = np.array([
-                processing.dense_to_one_hot(labelings[k], self._class_count)
-                for k in range(len(labelings))
-            ])
-        return self._sess.run(fetches, feed_dict)
+    def train(self,
+              train_data: Dataset,
+              epoch_count: int = 1,
+              visitor=DummyTrainingVisitor()):
+        """
+            Training consist of epochs. An epoch is a pass through the whole 
+            training dataset. An epoch consists of backpropagation steps. A step
+            one backpropagation pass (with a mini-batch), ie. one update of all
+            parameters.
+        """
+        dr = MiniBatchReader(train_data, self._batch_size)
 
-    def _log(self, text: str):
-        self.log += [text]
-        print(text)
+        self._log(
+            'Starting training and evaluation (epochs: {:.2f} ({} batches of size {} per epoch)))'
+            .format(epoch_count, dr.number_of_batches, self._batch_size))
+        alpha = 1 - \
+            2 ** (-0.005 * train_accuracy_log_period * self._batch_size)
+        abort = False
+
+        for ep in range(epoch_count):
+            if end:
+                break
+            self._log('Training:')
+            dr.reset(shuffle=True)
+            for b in range(dr.number_of_batches):
+                images, labels = dr.get_next_batch()
+                fetches = [self._train_step, self._cost, self._accuracy]
+                _, cost, batch_accuracy = self._run_session(
+                    fetches, images, labels)
+                if b % train_accuracy_log_period == 0:
+                    self.train_accuracy += alpha * \
+                        (batch_accuracy - self.train_accuracy)
+                    t = datetime.datetime.now().strftime('%H:%M:%S')
+                    self._log(
+                        t +
+                        ' epoch {:d}, step {:d}, cost {:.4f}, accuracy {:.3f} ~{:.3f}'
+                        .format(ep, b, cost, batch_accuracy,
+                                self.train_accuracy))
+
+                if visitor.minibatch_completed(b, images, labels) == True:
+                    end = True
+            if visitor.epoch_completed(ep, images, labels) == True:
+                end = True
 
 
 if __name__ == '__main__':
