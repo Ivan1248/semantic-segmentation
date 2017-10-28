@@ -5,6 +5,7 @@
     An example is Iccv09Preparer. It converts the ICCV09 (Stanford background)
     dataset to the desired format.
 """
-import sys; sys.path.append('.')
-from data.preparers.abstract_preparer import AbstractPreparer
-from data.preparers.iccv09_preparer import Iccv09Preparer
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # preparers/*
+from preparers.abstract_preparer import AbstractPreparer
+from preparers.iccv09_preparer import Iccv09Preparer

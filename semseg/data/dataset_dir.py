@@ -4,7 +4,8 @@ from typing import List
 import skimage.io
 import numpy as np
 
-import sys; sys.path.append('..')
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from semseg.util import directory
 
 IMAGE_EXT = '.png'

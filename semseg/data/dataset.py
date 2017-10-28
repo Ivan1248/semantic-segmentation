@@ -3,8 +3,9 @@ import numpy as np
 import random
 from abc import *
 
-import sys; sys.path.append('.')  # seems to be required in order to access sibling modules with "data." 
-from data.dataset_dir import load_images, load_labels, load_info
+import os, sys
+sys.path.append(os.path.dirname(__file__))  # data 
+from dataset_dir import load_images, load_labels, load_info
 
 
 class Dataset:

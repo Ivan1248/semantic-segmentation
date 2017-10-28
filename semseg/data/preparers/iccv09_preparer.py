@@ -2,9 +2,10 @@ import os.path
 import skimage.io
 import numpy as np
 
-import sys; sys.path.append('..')
-from semseg.processing.shape import adjust_shape
-from semseg.util import path, directory
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))  # semseg/*
+from processing.shape import adjust_shape
+from util import path, directory
 
 import sys; sys.path.append('.')
 from data.dataset_dir import save_image, save_labeling, save_info

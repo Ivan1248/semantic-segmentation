@@ -1,9 +1,9 @@
-from abc import *
+import abc
 
 
-class AbstractPreparer(metaclass=ABCMeta):
+class AbstractPreparer(object):
     @staticmethod
-    @abstractmethod
+    @abc.abstractmethod
     def prepare(data_path: str) -> str:
         """
         Converts a raw dataset at <data_path>/* into

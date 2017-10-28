@@ -1,7 +1,5 @@
-import sys; sys.path.append('.')  # data
-
-import data
-import data.preparers
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # semseg/*
 
 import processing
 import processing.image_format
