@@ -1,25 +1,25 @@
 # Deep convolutional networks for semantic segmentation
 
 ## Code and data organization
-``` python
+``` latex
 semseg
-├── storage  # data: datasets, trained models, log-files, ...
-├── data  # data loading and preparation
+├── storage  % data: datasets, trained models, log-files, ...
+├── data  % data loading and preparation
 |   ├── preparers
 |   |   ├── abstract_preparer.py
 |   |   └── iccv09_preparer.py 
-|   ├── dataset_dir.py  # helper functions
-|   └── dataset.py  # Dataset, MiniBatchReader
-├── processing  # image and label processing
+|   ├── dataset_dir.py  % helper functions
+|   └── dataset.py  % Dataset, MiniBatchReader
+├── processing  % image and label processing
 |   ├── image_format.py
 |   ├── labels.py
-|   ├── shape.py  # TODO: test
-|   └── transform.py  # TODO: use skimage.transform and test
+|   ├── shape.py  % TODO: test
+|   └── transform.py  % TODO: use skimage.transform and test
 ├── util  # helper functions and classes
-|   ├── directory.py  # get_files
+|   ├── directory.py  % get_files
 |   ├── file.py
 |   ├── path.py
-|   ├── display_window.py  # DisplayWindow
+|   ├── display_window.py  % DisplayWindow
 |   :.
 ├── evaluation.py
 ├── preprocessing.py
