@@ -101,4 +101,3 @@ class MiniBatchReader:
         while b is not None:
             b = self.get_next_batch()
             yield b
-
