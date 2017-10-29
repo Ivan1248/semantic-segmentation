@@ -4,7 +4,7 @@ import random
 from abc import *
 
 import os, sys
-sys.path.append(os.path.dirname(__file__))  # data 
+sys.path.append(os.path.dirname(__file__))  # data
 from dataset_dir import load_images, load_labels, load_info
 
 
@@ -12,6 +12,7 @@ class Dataset:
     """
         TODO: rng seed, shuffle list of indices, not images -> add unshuffle function
     """
+
     def __init__(self, images: list, labels: list, class_count: int):
         self._images = images
         self._labels = labels
@@ -22,7 +23,8 @@ class Dataset:
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            return self._images[key.start:key.stop:key.step], self.labels[key.start:key.stop:key.step]
+            return self._images[key.start:key.stop:key.step], self.labels[
+                key.start:key.stop:key.step]
         else:  # int
             return self._images[key], self.labels[key]
 
@@ -49,8 +51,10 @@ class Dataset:
 
     def split(self, start, end):
         """ Splits the dataset into two smaller datasets. """
-        first = Dataset(self.images[start:end], self.labels[start:end], self.class_count)
-        second = Dataset(self.images[:start] + self.images[end:], self.labels[:start] + self.labels[end:],
+        first = Dataset(self.images[start:end], self.labels[start:end],
+                        self.class_count)
+        second = Dataset(self.images[:start] + self.images[end:],
+                         self.labels[:start] + self.labels[end:],
                          self.class_count)
         return first, second
 
@@ -70,6 +74,7 @@ class Dataset:
     def load(dataset_directory: str):
         images = load_images(dataset_directory)
         labels = load_labels(dataset_directory)
+        assert (len(images) > 0 and len(images) == len(labels))
         class_count = load_info(dataset_directory).class_count
         return Dataset(images, labels, class_count)
 

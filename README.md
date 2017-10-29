@@ -19,7 +19,7 @@ semseg
 ├── processing  % image and label processing
 |   ├── image_format.py
 |   ├── labels.py
-|   ├── shape.py  % TODO: test
+|   ├── shape.py  % TODO: test resize
 |   └── transform.py  % TODO: use skimage.transform and test
 ├── storage  % data (not code): datasets, trained models, log-files, ...
 ├── test  # unit tests

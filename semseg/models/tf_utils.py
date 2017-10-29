@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 
@@ -19,7 +20,7 @@ def max_pool(x, dim: int):
 
 
 def rescale(x, factor):
-    shape = x.get_shape()[1:3]*factor
+    shape = np.array(x.get_shape()[1:3])*factor
     return x if factor == 1 else tf.image.resize_nearest_neighbor(x, shape)
 
 

@@ -22,17 +22,18 @@ class AbstractModel(object):
             save_path="storage/models",
             name='SS-DCNN'):
         self.name = name
-        self.log = []
-        self.save_path = save_path
-        self._saver = tf.train.Saver(
-            max_to_keep=10, keep_checkpoint_every_n_hours=2)
 
         self._batch_size = batch_size
         self._input_shape, self._class_count = input_shape, class_count
 
         self._sess = tf.Session()
-        self._build_graph()
+        self._input, self._y_true, self._probs = self._build_graph()
         self._sess.run(tf.initialize_all_variables())
+        
+        self.log = []
+        self.save_path = save_path
+        self._saver = tf.train.Saver(
+            max_to_keep=10, keep_checkpoint_every_n_hours=2)
 
     def __del__(self):  # I am not sure whether this is good
         self._sess.close()
@@ -95,21 +96,6 @@ class AbstractModel(object):
     def test(self, dataset: Dataset, evaluator=None):
         pass
 
-    @property
-    @abc.abstractmethod
-    def _probs(self):
-        """
-            Returns the pixelwise-class probabilities (pixelwise softmax) graph
-            node.
-        """
-        raise NotImplementedError()
-
-    @property
-    @abc.abstractmethod
-    def _y_true(self):
-        """ Returns the target one-hot labels graph node. """
-        raise NotImplementedError()
-
     @abc.abstractmethod
     def _build_graph(self):
         """ 
@@ -117,11 +103,13 @@ class AbstractModel(object):
             Override this. It will be automatically called by the constructor
             (assuming super().__init__(...) is called in the constructor of the
             subclass).
+            Returns tuple (input node, target labels node, probs node) (nodes 
+            are of type tf.Tensor, the first 2 being placeholders)
          """
-        pass
+        return None, None, None
 
     def _run_session(self, fetches: list, images, labels=None):
-        feed_dict = {self.input: images}
+        feed_dict = {self._input: images}
         if labels is not None:
             feed_dict[self._y_true] = np.array([
                 dense_to_one_hot(lab, self._class_count)

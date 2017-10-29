@@ -5,7 +5,6 @@ import unittest
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # semseg/*
 
-
 # adds timestamp to `print`
 def printt(x):
     print("[{}] {}".format(datetime.datetime.now().strftime('%H:%M:%S'), x))
@@ -28,14 +27,12 @@ class Test(unittest.TestCase):
                 prepared_data_path, ignore_errors=False, onerror=None)
         printt('Preparing dataset in "{}". This will probably take several minutes...'.format(prepared_data_path))
         assert (prepared_data_path == Iccv09Preparer.prepare(data_path))
-        printt('Dateset prepared.')
+        printt('Dataset prepared.')
 
         printt('Loading dataset...')
         dataset = Dataset.load(prepared_data_path)
-
         printt('Shuffling dataset...')
         dataset.shuffle()
-
         printt('Splitting dataset...')
         fold_count = 5
         for f in range(0, fold_count):
