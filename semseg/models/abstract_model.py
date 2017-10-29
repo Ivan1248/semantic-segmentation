@@ -124,7 +124,7 @@ class AbstractModel(object):
         feed_dict = {self.input: images}
         if labels is not None:
             feed_dict[self._y_true] = np.array([
-                dense_to_one_hot(lab, self._class_count) 
+                dense_to_one_hot(lab, self._class_count)
                 for i, lab in enumerate(labels)
             ])
         return self._sess.run(fetches, feed_dict)

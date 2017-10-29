@@ -7,9 +7,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))  # semseg/*
 from processing.shape import adjust_shape
 from util import path, directory
 
-import sys; sys.path.append('.')
-from data.dataset_dir import save_image, save_labeling, save_info
-from data.preparers.abstract_preparer import AbstractPreparer
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # data/*
+from dataset_dir import save_image, save_labeling, save_info, get_images_dir, get_labels_dir
+from preparers.abstract_preparer import AbstractPreparer
 
 class Iccv09Preparer(AbstractPreparer):
     IN_IMAGE_EXT = '.jpg'
@@ -25,8 +26,8 @@ class Iccv09Preparer(AbstractPreparer):
         os.makedirs(out_data_path)
 
         in_images_path, in_labels_path = (os.path.join(data_path, d) for d in ('images', 'labels'))
-        out_images_path = data.dataset_dir.get_images_dir(out_data_path)
-        out_labels_path = data.dataset_dir.get_labels_dir(out_data_path)
+        out_images_path = get_images_dir(out_data_path)
+        out_labels_path = get_labels_dir(out_data_path)
         os.makedirs(out_images_path)
         os.makedirs(out_labels_path)
 
@@ -50,14 +51,8 @@ class Iccv09Preparer(AbstractPreparer):
     def _load_and_convert_labeling(file_path):
         """
         Creates a matrix representation of labels.
-        0-valued bytes represent pixels representing unknown or nothing.
+        0-valued bytes represent pixels representing unknown/nothing/background.
         1-10-valued bytes represent pixels belonging to classes listed in README.
         """
         # TODO check unknown/nothing
-        a = np.loadtxt(file_path, dtype=np.uint8) + 1
-        with open(file_path) as file:
-            b = np.asarray([[np.uint8(int(val) + 1) for val in line.split(' ')] for line in file])
-        for i in range(a.shape[0]):
-            for j in range(a.shape[1]):
-                assert a[i, j] == b[i, j]
-        return a
+        return np.loadtxt(file_path, dtype=np.uint8)+1

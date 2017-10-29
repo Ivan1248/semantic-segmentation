@@ -5,8 +5,8 @@ import skimage.io
 import numpy as np
 
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from semseg.util import directory
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from util import directory, file
 
 IMAGE_EXT = '.png'
 LABELING_EXT = '.lab'
@@ -49,7 +49,7 @@ def save_info(data_dir_path: str, class_count: int):
 
 
 def load_info(data_dir_path: str) -> DataSetInfo:
-    return DataSetInfo(int(read_all_text(os.path.join(data_dir_path, 'info.cfg'))))
+    return DataSetInfo(int(file.read_all_text(os.path.join(data_dir_path, 'info.cfg'))))
 
 
 def _load_all(dir_path: str, loading_function) -> List[np.ndarray]:
