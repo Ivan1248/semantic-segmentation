@@ -64,18 +64,3 @@ def load_images(data_dir_path: str) -> List[np.ndarray]:
 
 def load_labels(data_dir_path: str) -> List[np.ndarray]:
     return _load_all(get_labels_dir(data_dir_path), load_labeling)
-
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    dirpath = os.path.join(os.path.dirname(__file__),"_test")
-    image = load_image(os.path.join(dirpath,"kokosi.png"))
-    save_image(image, dirpath, "saved")
-    save_path = os.path.join(dirpath,"saved.png")
-    image = load_image(save_path)
-    import skimage.util
-    skimage.io.imshow(skimage.util.pad(image, ((10,2),(40,80),(0,0)), mode='constant'))
-    plt.show()
-    os.remove(save_path)
-    print(directory.get_files(dirpath))

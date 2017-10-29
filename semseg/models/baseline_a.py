@@ -1,29 +1,21 @@
 import datetime
-import os
-import re
-import preprocessing
-import processing
-import postprocessing
 import numpy as np
+import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
-from util import file, console
-from util.display_window import DisplayWindow
-from data.dataset import Dataset
-from data.dataset_reader import MiniBatchReader
+
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # semseg/*
+from data import Dataset, MiniBatchReader
 from util.training_visitor import DummyTrainingVisitor
+
 from abstract_model import AbstractModel
 
 
-class Baseline1(AbstractModel):
-    """ Suggested fixed hyperparameters: 
-            activation: ReLU
-            optimizer: Adam/RMSProp/SGD
-    """
-
+class BaselineA(AbstractModel):
     def __init__(
             self,
-            input_shape,  # maybe the network could accept variable image sizes
+            input_shape,
             class_count,
             batch_size: int,
             save_path="storage/models",
@@ -32,88 +24,59 @@ class Baseline1(AbstractModel):
                          name)
 
     def _build_graph(self):
-        """ 
-            Override this. It will be automatically called by the constructor
-            (assuming super().__init__(...) is called in the constructor of the
-            subclass).
-         """
         from tf_utils import conv_weight_variable, bias_variable, conv2d, max_pool, rescale, pixelwise_softmax
 
-        def layer_depth(layer: int):
-            return 3 if layer == -1 else (self._first_layer_depth * 4**layer)
-
-        def layer_shape(int, layer: int) -> tuple:
-            div = 2**(layer + (0 if layer == (self.layer_count - 1) else 1))
-            return self._shape[0] // div, self._shape[1] // div, \
-                layer_depth(layer)
+        def layer_width(layer: int):
+            return 3 if layer == -1 else (self._input_shape[2] * 4**layer)
 
         # Preprocessed input
-        sh = layer_shape(0)
-        input_shape = [None, sh[0], sh[1], sh[2]]
+        input_shape = [None] + list(self._input_shape)
         self.input = tf.placeholder(tf.float32, shape=input_shape)
 
-        # Convolution layers
+        # Hidden layers (after activation or pooling)
         w_conv = np.zeros(self.layer_count, dtype=object)
         b_conv = np.zeros(self.layer_count, dtype=object)
         h_conv = np.zeros(self.layer_count, dtype=object)
         h_pool = np.zeros(self.layer_count, dtype=object)
 
-        w_conv[0] = conv_weight_variable(3, 3, layer_depth(0))
-        b_conv[0] = bias_variable(layer_depth(0))
+        w_conv[0] = conv_weight_variable(3, 3, layer_width(0))
+        b_conv[0] = bias_variable(layer_width(0))
         for l in range(1, self.layer_count):
-            w_conv[l] = conv_weight_variable(self._conv_dim,
-                                             layer_depth(l - 1),
-                                             layer_depth(l))
-            b_conv[l] = bias_variable(layer_depth(l))
+            w_conv[l] = conv_weight_variable(3,
+                                             layer_width(l - 1),
+                                             layer_width(l))
+            b_conv[l] = bias_variable(layer_width(l))
 
-        split = max(int(5 / 8 * layer_depth(0) + 0.1), layer_depth(0) - 1)
-
-        h1 = conv2d(self.input[:, :, :, :1],
-                    w_conv[0][:, :, :1, :split]) + b_conv[0][:split]
-        h2 = conv2d(self.input[:, :, :, 1:],
-                    w_conv[0][:, :, 1:, split:]) + b_conv[0][split:]
-        h_conv[0] = self._act_fun(tf.concat(3, [h1, h2]))
+        h_conv[0] = tf.nn.relu(conv2d(self.input, w_conv[0]) + b_conv[0])
         for l in range(1, self.layer_count):
             h_pool[l - 1] = max_pool(h_conv[l - 1], 2)
-            h_conv[l] = self._act_fun(
+            h_conv[l] = tf.nn.relu(
                 conv2d(h_pool[l - 1], w_conv[l]) + b_conv[l])
-
-        # Concatenated feature maps
-        fm = h_conv[self.layer_count - 1]
 
         # 1x1 conolution
         w_fconv = conv_weight_variable(
             1,
-            layer_depth(self.layer_count - 1) * self.stage_count,
+            layer_width(self.layer_count - 1) * self.stage_count,
             self._class_count)
-        probs_small = pixelwise_softmax(conv2d(fm, w_fconv))
+        probs_small = pixelwise_softmax(conv2d(h_conv[-1], w_fconv))
         probs = rescale(probs_small, 2**(self.layer_count - 1))
 
         # Training and evaluation
-        self._y_true = tf.placeholder(
-            tf.float32,
-            shape=[None, self._shape[0], self._shape[1], self._class_count])
-        self._cost = - \
-            tf.reduce_mean(
-                self._y_true * tf.log(tf.clip_by_value(probs, 1e-10, 1.0)))
-        self._train_step = self._optimizer.minimize(self._cost)
-        correct_prediction = tf.equal(
-            tf.argmax(probs, 3), tf.argmax(self._y_true, 3))
-        self._accuracy = tf.reduce_mean(
-            tf.cast(correct_prediction, tf.float32))
+        output_shape = [None] + list(self.shape[0:2]) + [self._class_count]
+        self._y_true = tf.placeholder(tf.float32, shape=output_shape)
 
-        self._out_soft = probs[0, :, :, :]
+        clipped_probs = tf.clip_by_value(probs, 1e-10, 1.0)
+        self._cost = -tf.reduce_mean(self._y_true * tf.log(clipped_probs))
+        self._train_step = self._optimizer.minimize(self._cost)
+        preds, dense_labels = tf.argmax(probs, 3), tf.argmax(self._y_true, 3)
+        self._accuracy = tf.reduce_mean(preds == dense_labels)
+
+        self._probs = probs
 
     def train(self,
               train_data: Dataset,
               epoch_count: int = 1,
               visitor=DummyTrainingVisitor()):
-        """
-            Training consist of epochs. An epoch is a pass through the whole 
-            training dataset. An epoch consists of backpropagation steps. A step
-            one backpropagation pass (with a mini-batch), ie. one update of all
-            parameters.
-        """
         dr = MiniBatchReader(train_data, self._batch_size)
 
         self._log(
@@ -150,9 +113,9 @@ class Baseline1(AbstractModel):
 
 
 if __name__ == '__main__':
-    from scripts.train import train
+    #from scripts.train import train
     data_path = 'storage/datasets/iccv09Data'
     models_path = 'storage/models'
-    train(data_path, models_path)
+    #train(data_path, models_path)
 
 # "GTX 970" 43 times faster than "Intel Pentium 2020M @ 2.40GHz × 2"

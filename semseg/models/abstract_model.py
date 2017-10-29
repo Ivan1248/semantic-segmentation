@@ -1,31 +1,24 @@
+import abc
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops
-import abc
+import os
 
-import sys; sys.path.append(sys.path[0] + "/../../../..")
-print(len(sys.path))
-for p in sys.path:
-    print(p)
-from .. import data
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # semseg/*
+import data
 from data import Dataset, MiniBatchReader
-from processing.labels import one_hot_to_dense, one_hot_to_dense
+from processing.labels import one_hot_to_dense, dense_to_one_hot
 from util import file
 from util.training_visitor import DummyTrainingVisitor
 
 
 class AbstractModel(object):
-    """ 
-        Suggested fixed hyperparameters: 
-            activation: ReLU
-            optimizer: SGD is good enough
-    """
-
     def __init__(
             self,
-            input_shape,  # maybe the network could accept variable image sizes
+            input_shape,  # [width, height, number of channels], maybe [None, None, number of channels] could be allowed too for variable image size
             class_count,
-            batch_size: int,
+            batch_size: int,  # mini-batch size
             save_path="storage/models",
             name='SS-DCNN'):
         self.name = name
@@ -53,12 +46,13 @@ class AbstractModel(object):
             Saves the trained model as `file_path`.
             If `save_log == True`, `self.log` is saved as `file_path`+'.log'.
         """
-        import os
         file_path = os.path.join(file_path, str(self))
         if not os.path.exists(file_path):
             os.makedirs(file_path)
         self._saver.save(self._sess, file_path)
-        file.write_all_text(path + ".log", "\n".join(self.log))
+        with open(path + ".log", mode='w') as fs:
+            fs.write("\n".join(self.log))
+            fs.flush()
         print("State saved as '" + file_path + "'.")
         return file_path
 
@@ -73,8 +67,10 @@ class AbstractModel(object):
 
     def predict(self, images: list, probs=False):
         """
-            Requires pixelwise-class probabilities to be the TensorFlow graph
-            node `self_probs`. Feel free to override if needed.
+            Requires the pixelwise-class probabilities TensorFlow graph node
+            to be referenced by `self._probs`.
+            It would be good to modify it to do forward propagation in batches
+            istead of single images.
         """
         predict_probs = lambda im: self._run_session([self._probs], [im])[0]
         probs = [predict_probs(im) for _, im in enumerate(images)]
@@ -117,6 +113,7 @@ class AbstractModel(object):
     @abc.abstractmethod
     def _build_graph(self):
         """ 
+            Builds the TensorFlow graph for the model.
             Override this. It will be automatically called by the constructor
             (assuming super().__init__(...) is called in the constructor of the
             subclass).
@@ -127,20 +124,11 @@ class AbstractModel(object):
         feed_dict = {self.input: images}
         if labels is not None:
             feed_dict[self._y_true] = np.array([
-                dense_to_one_hot(labels[k], self._class_count)
-                for k in range(len(labels))
+                dense_to_one_hot(lab, self._class_count) 
+                for i, lab in enumerate(labels)
             ])
         return self._sess.run(fetches, feed_dict)
 
     def _log(self, text: str):
         self.log += [text]
         print(text)
-
-
-if __name__ == '__main__':
-    from scripts.train import train
-    data_path = 'storage/datasets/iccv09Data'
-    models_path = 'storage/models'
-    train(data_path, models_path)
-
-# "GTX 970" 43 times faster than "Intel Pentium 2020M @ 2.40GHz × 2"
