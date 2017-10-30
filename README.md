@@ -40,13 +40,15 @@ semseg
 
 ## Tasks
 #### Higher priority
-- write more tests
+- write more unit tests
 - suggest/make improvements
 - improve `models.BaselineA`
 - check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`)
 - make `util.ResultDisplayWindow` work 
+- move the `train` method to `AbstractModel`?
+- add a `test` metohod to `BaselineA` or `AbstractModel`
+- implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy
 #### Lower priority
-- modify `evaluation.py` so that it makes use of numpy
 - test and fix `processing.shape` - `resize` isn't tested
 - fix and test `processing.transform.py` (replace `cv2` with `skimage`)
 #### Maybe completed
