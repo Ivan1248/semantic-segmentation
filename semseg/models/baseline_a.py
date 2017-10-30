@@ -17,10 +17,13 @@ class BaselineA(AbstractModel):
                  input_shape,
                  class_count,
                  batch_size: int,
+                 conv_layer_count=2,
+                 learning_rate=5e-3,
                  save_path="storage/models",
                  name='BaselineA'):
-        self.conv_layer_count = 2
-        self.learning_rate = 1e-1
+        self.conv_layer_count = conv_layer_count
+        self.learning_rate = learning_rate
+        self.completed_epoch_count = 0
         super().__init__(input_shape, class_count, batch_size, save_path, name)
 
     def _build_graph(self):
@@ -91,11 +94,29 @@ class BaselineA(AbstractModel):
                     self._log(
                         t +
                         ' epoch {:d}, step {:d}, cost {:.4f}, accuracy {:.3f}'
-                        .format(ep, b, cost, batch_accuracy))
+                        .format(self.completed_epoch_count, b, cost,
+                                batch_accuracy))
                 #if visitor.minibatch_completed(b, images, labels) == True:
                 #   end = True
             #if visitor.epoch_completed(ep, images, labels) == True:
             #    end = True
+            self.completed_epoch_count += 1
+
+    def test(self, dataset):
+        self._log('Testing...')
+        cost_sum, accuracy_sum = 0, 0
+        dr = MiniBatchReader(dataset, self._batch_size)
+        for _ in range(dr.number_of_batches):
+            images, labels = dr.get_next_batch()
+            fetches = [self._cost, self._accuracy]
+            c, a = self._run_session(fetches, images, labels)
+            cost_sum += c
+            accuracy_sum += a
+        cost = cost_sum / dr.number_of_batches
+        accuracy = accuracy_sum / dr.number_of_batches
+        t = datetime.datetime.now().strftime('%H:%M:%S')
+        self._log(t + ': cost {:.4f}, accuracy {:.3f}: '.format(
+            cost, accuracy))
 
 
 def main(epoch_count=1):
@@ -118,8 +139,8 @@ def main(epoch_count=1):
         save_path="../storage/models",
         name='baseline_a-bs8')
     print("Training model...")
+    model.test(ds_val)    
     for i in range(epoch_count):
-        print("Training epoch {}".format(i))
         model.train(ds_train, epoch_count=1)
         model.test(ds_val)
 
