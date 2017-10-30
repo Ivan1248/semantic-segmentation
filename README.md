@@ -3,7 +3,7 @@
 Parts of the code are are based on [this project](https://bitbucket.org/Ivan1248/semantic-image-segmentation-by-deep-convolutional-networks/).
 
 ## Code and data organization
-``` latex
+``` tex
 semseg
 ├── data  % data loading and preparation
 |   ├── preparers
@@ -13,7 +13,9 @@ semseg
 |   └── dataset.py  % Dataset, MiniBatchReader
 ├── models
 |   ├── preprocessing.py
-|   ├── tf_utils.py
+|   ├── tf_utils
+|   |   ├── layers.py  % conv, max_pool, resize, 
+|   |   └── variables.py 
 |   ├── abstract_model.py  % AbstractModel
 |   └── baseline_a.py  % BaselineA
 ├── processing  % image and label processing
@@ -45,7 +47,11 @@ semseg
 - improve `models.BaselineA`
 - check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`)
 - make `util.ResultDisplayWindow` work 
+- add `stride` parameter to `tf_utils.layers.conv`
 #### Lower priority
+- add `dilation` parameter to `tf_utils.layers.conv`
+- add transposed convolution to `tf_utils.layers`
+- add batch normalization to `tf_utils.layers`
 - modify `evaluation.py` so that it makes use of numpy
 - test and fix `processing.shape` - `resize` isn't tested
 - fix and test `processing.transform.py` (replace `cv2` with `skimage`)

@@ -18,62 +18,54 @@ class BaselineA(AbstractModel):
                  class_count,
                  batch_size: int,
                  save_path="storage/models",
-                 name='SS-DCNN'):
-        self.layer_count = 3
+                 name='BaselineA'):
+        self.conv_layer_count = 2
+        self.learning_rate = 1e-1
         super().__init__(input_shape, class_count, batch_size, save_path, name)
 
     def _build_graph(self):
-        from tf_utils import conv_weight_variable, bias_variable, conv2d, max_pool, rescale, pixelwise_softmax
+        from tf_utils.layers import conv, max_pool, resize
 
-        def layer_width(layer: int):
-            return 3 if layer == -1 else (self._input_shape[2] * 4**layer)
+        def layer_width(layer: int):  # number of features per pixel in layer
+            return self._input_shape[2] * 4**(layer + 1)
 
-        # Input image and labels placeholders
         input_shape = [None] + list(self._input_shape)
         output_shape = input_shape[:3] + [self._class_count]
-        image = tf.placeholder(tf.float32, shape=input_shape)
-        target_labels = tf.placeholder(tf.float32, shape=output_shape)
+
+        # Input image and labels placeholders
+        input = tf.placeholder(tf.float32, shape=input_shape)
+        target = tf.placeholder(tf.float32, shape=output_shape)
 
         # Hidden layers
-        w_conv = np.zeros(self.layer_count, dtype=object)
-        b_conv = np.zeros(self.layer_count, dtype=object)
-        h_conv = np.zeros(self.layer_count, dtype=object)
-        h_pool = np.zeros(self.layer_count, dtype=object)
-
-        w_conv[0] = conv_weight_variable(3, 3, layer_width(0))
-        b_conv[0] = bias_variable(layer_width(0))
-        for l in range(1, self.layer_count):
-            w_conv[l] = conv_weight_variable(3,
-                                             layer_width(l - 1),
-                                             layer_width(l))
-            b_conv[l] = bias_variable(layer_width(l))
-
-        h_conv[0] = tf.nn.relu(conv2d(image, w_conv[0]) + b_conv[0])
-        for l in range(1, self.layer_count):
-            h_pool[l - 1] = max_pool(h_conv[l - 1], 2)
-            h_conv[l] = tf.nn.relu(
-                conv2d(h_pool[l - 1], w_conv[l]) + b_conv[l])
+        h = conv(input, 3, layer_width(0))
+        h = tf.nn.relu(h)
+        for l in range(1, self.conv_layer_count):
+            h = max_pool(h, 2)
+            h = conv(h, 3, layer_width(l))
+            h = tf.nn.relu(h)
 
         # Pixelwise softmax classification
-        w_fconv = conv_weight_variable(
-            1,
-            layer_width(self.layer_count - 1),
-            self._class_count)
-        probs_small = pixelwise_softmax(conv2d(h_conv[-1], w_fconv))
-        probs = rescale(probs_small, 2**(self.layer_count - 1))
+        logits = conv(h, 1, self._class_count)
+        probs = tf.nn.softmax(logits)
+        probs = resize(probs, 2**(self.conv_layer_count - 1))
 
         # Training and evaluation
         clipped_probs = tf.clip_by_value(probs, 1e-10, 1.0)
-        self._cost = -tf.reduce_mean(target_labels * tf.log(clipped_probs))
-        self._train_step = tf.train.GradientDescentOptimizer(1e-2).minimize(self._cost)
+        cost = -tf.reduce_mean(target * tf.log(clipped_probs))
+        optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+        train_step = optimizer.minimize(cost)
 
-        preds, dense_labels = tf.argmax(clipped_probs, 3), tf.argmax(target_labels, 3)
-        self._accuracy = tf.reduce_mean(tf.cast(tf.equal(preds, dense_labels), tf.float32))
+        self._cost, self._train_step = cost, train_step
 
-        return image, target_labels, probs
+        preds, dense_labels = tf.argmax(probs, 3), tf.argmax(target, 3)
+        self._accuracy = tf.reduce_mean(
+            tf.cast(tf.equal(preds, dense_labels), tf.float32))
+
+        return input, target, probs
 
     def train(self,
               train_data: Dataset,
+              validation_data: Dataset = None,
               epoch_count: int = 1,
               visitor=DummyTrainingVisitor()):
         dr = MiniBatchReader(train_data, self._batch_size)
@@ -101,9 +93,10 @@ class BaselineA(AbstractModel):
                         ' epoch {:d}, step {:d}, cost {:.4f}, accuracy {:.3f}'
                         .format(ep, b, cost, batch_accuracy))
                 #if visitor.minibatch_completed(b, images, labels) == True:
-                 #   end = True
+                #   end = True
             #if visitor.epoch_completed(ep, images, labels) == True:
             #    end = True
+
 
 def main(epoch_count=1):
     from data import Dataset
@@ -129,6 +122,7 @@ def main(epoch_count=1):
         print("Training epoch {}".format(i))
         model.train(ds_train, epoch_count=1)
         model.test(ds_val)
+
 
 if __name__ == '__main__':
     main(epoch_count=200)
