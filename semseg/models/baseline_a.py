@@ -105,12 +105,32 @@ class BaselineA(AbstractModel):
             #if visitor.epoch_completed(ep, images, labels) == True:
             #    end = True
 
+def main(epoch_count=1):
+    from data import Dataset
+    from data.preparers import Iccv09Preparer
+
+    data_path = os.path.join(
+        os.path.dirname(__file__), '../storage/datasets/iccv09')
+    data_path = Iccv09Preparer.prepare(data_path)
+    print("Loading data...")
+    ds = Dataset.load(data_path)
+    print("Splitting dataset...")
+    ds_trainval, ds_test = ds.split(0, int(ds.size * 0.8))
+    ds_train, ds_val = ds_trainval.split(0, int(ds_trainval.size * 0.8))
+    print("Initializing model...")
+    model = BaselineA(
+        input_shape=ds.image_shape,
+        class_count=ds.class_count,
+        batch_size=20,
+        save_path="../storage/models",
+        name='baseline_a-bs8')
+    print("Training model...")
+    for i in range(epoch_count):
+        print("Training epoch {}".format(i))
+        model.train(ds_train, epoch_count=1)
+        model.test(ds_val)
 
 if __name__ == '__main__':
-    #from scripts.train import train
-    data_path = 'storage/datasets/iccv09Data'
-    models_path = 'storage/models'
+    main(epoch_count=200)
 
-    #train(data_path, models_path)
-
-# "GTX 970" 43 times faster than "Intel Pentium 2020M @ 2.40GHz × 2"
+# "GTX 970" 43 times faster than "Pentium 2020M @ 2.40GHz × 2"

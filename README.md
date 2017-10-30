@@ -40,10 +40,11 @@ semseg
 
 ## Tasks
 #### Higher priority
-- make a working baseline
 - write more tests
 - suggest/make improvements
-- check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`) 
+- improve `models.BaselineA`
+- check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`)
+- make `util.ResultDisplayWindow` work 
 #### Lower priority
 - modify `evaluation.py` so that it makes use of numpy
 - test and fix `processing.shape` - `resize` isn't tested
@@ -51,4 +52,5 @@ semseg
 #### Maybe completed
 - finish `abstract_model`
 #### Completed
+- make a working baseline
 - test and fix data loading (`data.preparers.Iccv09Preparer, data.Dataset}`)
