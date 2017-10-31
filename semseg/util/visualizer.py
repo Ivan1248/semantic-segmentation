@@ -2,7 +2,7 @@ import cv2  # Can it be replaced with matplotlib and skimage?
 import numpy as np
 
 
-class ResultDisplayWindow:
+class Visualizer:
     def __init__(self, name='default'):
         self.name = name
 

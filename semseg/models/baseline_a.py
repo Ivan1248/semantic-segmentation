@@ -16,15 +16,24 @@ class BaselineA(AbstractModel):
     def __init__(self,
                  input_shape,
                  class_count,
-                 batch_size: int,
+                 class0_unknown=False,
+                 batch_size=20,
                  conv_layer_count=2,
                  learning_rate=5e-3,
+                 training_log_period=1,
                  save_path="storage/models",
                  name='BaselineA'):
         self.conv_layer_count = conv_layer_count
         self.learning_rate = learning_rate
         self.completed_epoch_count = 0
-        super().__init__(input_shape, class_count, batch_size, save_path, name)
+        self.class0_unknown = class0_unknown
+        super().__init__(
+            input_shape=input_shape,
+            class_count=class_count,
+            batch_size=batch_size,
+            training_log_period=training_log_period,
+            save_path=save_path,
+            name=name)
 
     def _build_graph(self):
         from tf_utils.layers import conv, max_pool, resize
@@ -54,69 +63,34 @@ class BaselineA(AbstractModel):
 
         # Training and evaluation
         clipped_probs = tf.clip_by_value(probs, 1e-10, 1.0)
-        cost = -tf.reduce_mean(target * tf.log(clipped_probs))
+        cost = None
+        if self.class0_unknown:
+            s = lambda x: x[:, :, :, 1:]
+            cost = -tf.reduce_mean(s(target) * tf.log(s(clipped_probs)))
+        else:
+            cost = -tf.reduce_mean(target * tf.log(clipped_probs))
         optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
-        train_step = optimizer.minimize(cost)
+        training_step = optimizer.minimize(cost)
 
-        self._cost, self._train_step = cost, train_step
+        self._cost, self._training_step = cost, training_step
 
         preds, dense_labels = tf.argmax(probs, 3), tf.argmax(target, 3)
         self._accuracy = tf.reduce_mean(
             tf.cast(tf.equal(preds, dense_labels), tf.float32))
 
-        return input, target, probs
+        return input, target, probs, training_step
 
     def train(self,
               train_data: Dataset,
               validation_data: Dataset = None,
-              epoch_count: int = 1,
-              visitor=DummyTrainingVisitor()):
-        dr = MiniBatchReader(train_data, self._batch_size)
-        train_accuracy_log_period = 1
-
-        self._log(
-            'Starting training and evaluation (epochs: {} ({} batches of size {} per epoch)))'
-            .format(epoch_count, dr.number_of_batches, self._batch_size))
-        end = False
-
-        for ep in range(epoch_count):
-            if end:
-                break
-            self._log('Training:')
-            dr.reset(shuffle=True)
-            for b in range(dr.number_of_batches):
-                images, labels = dr.get_next_batch()
-                fetches = [self._train_step, self._cost, self._accuracy]
-                _, cost, batch_accuracy = self._run_session(
-                    fetches, images, labels)
-                if b % train_accuracy_log_period == 0:
-                    t = datetime.datetime.now().strftime('%H:%M:%S')
-                    self._log(
-                        t +
-                        ' epoch {:d}, step {:d}, cost {:.4f}, accuracy {:.3f}'
-                        .format(self.completed_epoch_count, b, cost,
-                                batch_accuracy))
-                #if visitor.minibatch_completed(b, images, labels) == True:
-                #   end = True
-            #if visitor.epoch_completed(ep, images, labels) == True:
-            #    end = True
-            self.completed_epoch_count += 1
+              epoch_count: int = 1):
+        self._train(train_data, validation_data, epoch_count, {
+            'accuracy': self._accuracy
+        })
 
     def test(self, dataset):
-        self._log('Testing...')
-        cost_sum, accuracy_sum = 0, 0
-        dr = MiniBatchReader(dataset, self._batch_size)
-        for _ in range(dr.number_of_batches):
-            images, labels = dr.get_next_batch()
-            fetches = [self._cost, self._accuracy]
-            c, a = self._run_session(fetches, images, labels)
-            cost_sum += c
-            accuracy_sum += a
-        cost = cost_sum / dr.number_of_batches
-        accuracy = accuracy_sum / dr.number_of_batches
-        t = datetime.datetime.now().strftime('%H:%M:%S')
-        self._log(t + ': cost {:.4f}, accuracy {:.3f}: '.format(
-            cost, accuracy))
+        """ Override if extra fetches (maybe some evaluation measures) are needed """
+        self._test(dataset, extra_fetches={'accuracy': self._accuracy})
 
 
 def main(epoch_count=1):
@@ -135,11 +109,12 @@ def main(epoch_count=1):
     model = BaselineA(
         input_shape=ds.image_shape,
         class_count=ds.class_count,
+        class0_unknown=True,
         batch_size=20,
         save_path="../storage/models",
         name='baseline_a-bs8')
-    print("Training model...")
-    model.test(ds_val)    
+    print("Starting training and validation loop...")
+    model.test(ds_val)
     for i in range(epoch_count):
         model.train(ds_train, epoch_count=1)
         model.test(ds_val)
