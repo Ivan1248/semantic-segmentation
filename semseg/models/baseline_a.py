@@ -39,10 +39,10 @@ class BaselineA(AbstractModel):
         from tf_utils.layers import conv, max_pool, resize
 
         def layer_width(layer: int):  # number of features per pixel in layer
-            return self._input_shape[2] * 4**(layer + 1)
+            return self.input_shape[2] * 4**(layer + 1)
 
-        input_shape = [None] + list(self._input_shape)
-        output_shape = input_shape[:3] + [self._class_count]
+        input_shape = [None] + list(self.input_shape)
+        output_shape = input_shape[:3] + [self.class_count]
 
         # Input image and labels placeholders
         input = tf.placeholder(tf.float32, shape=input_shape)
@@ -57,7 +57,7 @@ class BaselineA(AbstractModel):
             h = tf.nn.relu(h)
 
         # Pixelwise softmax classification
-        logits = conv(h, 1, self._class_count)
+        logits = conv(h, 1, self.class_count)
         probs = tf.nn.softmax(logits)
         probs = resize(probs, 2**(self.conv_layer_count - 1))
 
@@ -72,25 +72,28 @@ class BaselineA(AbstractModel):
         optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
         training_step = optimizer.minimize(cost)
 
-        self._cost, self._training_step = cost, training_step
-
         preds, dense_labels = tf.argmax(probs, 3), tf.argmax(target, 3)
-        self._accuracy = tf.reduce_mean(
+        self._n_accuracy = tf.reduce_mean(
             tf.cast(tf.equal(preds, dense_labels), tf.float32))
 
-        return input, target, probs, training_step
+        return AbstractModel.EssentialNodes(
+            input=input,
+            target=target,
+            probs=probs,
+            loss=cost,
+            training_step=training_step)
 
     def train(self,
               train_data: Dataset,
               validation_data: Dataset = None,
               epoch_count: int = 1):
         self._train(train_data, validation_data, epoch_count, {
-            'accuracy': self._accuracy
+            'accuracy': self._n_accuracy
         })
 
     def test(self, dataset):
         """ Override if extra fetches (maybe some evaluation measures) are needed """
-        self._test(dataset, extra_fetches={'accuracy': self._accuracy})
+        self._test(dataset, extra_fetches={'accuracy': self._n_accuracy})
 
 
 def main(epoch_count=1):

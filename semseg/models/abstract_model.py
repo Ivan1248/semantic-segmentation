@@ -16,10 +16,10 @@ from util.training_visitor import DummyTrainingVisitor
 
 class AbstractModel(object):
     class EssentialNodes:
-        def __init__(self, input, target, prediction, loss, training_step):
+        def __init__(self, input, target, probs, loss, training_step):
             self.input = input
             self.target = target
-            self.prediction = prediction
+            self.probs = probs
             self.loss = loss
             self.training_step = training_step
 
@@ -33,13 +33,13 @@ class AbstractModel(object):
             name='SS-DCNN'):
         self.name = name
 
-        self._batch_size = batch_size
-        self._input_shape, self._class_count = input_shape, class_count
+        self.batch_size = batch_size
+        self.input_shape, self.class_count = input_shape, class_count
 
         self._sess = tf.Session()
-        self._input, self._target, self._probs, self._training_step = self._build_graph(
-        )
-        self._sess.run(tf.initialize_all_variables())
+        self.nodes = self._build_graph()
+
+        self._sess.run(tf.global_variables_initializer())
 
         self.training_log_period = training_log_period
         self.log = []
@@ -85,7 +85,7 @@ class AbstractModel(object):
             It would be good to modify it to do forward propagation in batches
             istead of single images.
         """
-        predict_probs = lambda im: self._run_session([self._probs], [im])[0]
+        predict_probs = lambda im: self._run_session([self.nodes.probs], [im])[0]
         probs = [predict_probs(im) for _, im in enumerate(images)]
         if not probs:
             return [one_hot_to_dense(p) for p in probs]
@@ -106,14 +106,14 @@ class AbstractModel(object):
         """ Override if extra fetches (maybe some evaluation measures) are needed """
         self._test(dataset, extra_fetches=dict())
 
-    def _train_step(self, images, labels, extra_fetches: list = []):
-        fetches = [self._training_step, self._cost] + list(extra_fetches)
+    def _train_minibatch(self, images, labels, extra_fetches: list = []):
+        fetches = [self.nodes.training_step, self.nodes.loss] + list(extra_fetches)
         evals = self._run_session(fetches, images, labels)
         cost, extra = evals[1], evals[2:]
         return cost, extra
 
-    def _test_step(self, images, labels, extra_fetches: list = []):
-        fetches = [self._cost] + list(extra_fetches)
+    def _test_minibatch(self, images, labels, extra_fetches: list = []):
+        fetches = [self.nodes.loss] + list(extra_fetches)
         evals = self._run_session(fetches, images, labels)
         cost, extra = evals[0], evals[1:]
         return cost, extra
@@ -132,14 +132,14 @@ class AbstractModel(object):
                 self._log(' epoch {:d}, step {:d}, cost {:.4f}, {}'.format(
                     self.completed_epoch_count, b, cost, extra))
 
-        dr = MiniBatchReader(train_data, self._batch_size)
-        log_training_start(epoch_count, dr.number_of_batches, self._batch_size)
+        dr = MiniBatchReader(train_data, self.batch_size)
+        log_training_start(epoch_count, dr.number_of_batches, self.batch_size)
         end = False
         for ep in range(epoch_count):
             dr.reset(shuffle=True)
             for b in range(dr.number_of_batches):
                 images, labels = dr.get_next_batch()
-                cost, extra = self._train_step(images, labels,
+                cost, extra = self._train_minibatch(images, labels,
                                                extra_fetches.values())
                 log_training_step(b, cost,
                                   dict(zip(extra_fetches.keys(), extra)))
@@ -154,18 +154,19 @@ class AbstractModel(object):
     def _test(self, dataset, extra_fetches: dict = dict()):
         self._log('Testing...')
         cost_sum, extra_sum = 0, np.zeros(len(extra_fetches))
-        dr = MiniBatchReader(dataset, self._batch_size)
+        dr = MiniBatchReader(dataset, self.batch_size)
         for _ in range(dr.number_of_batches):
             images, labels = dr.get_next_batch()
-            cost, extra = self._test_step(images, labels,
+            cost, extra = self._test_minibatch(images, labels,
                                           extra_fetches.values())
             cost_sum += cost
             extra_sum += np.array(extra)
         cost = cost_sum / dr.number_of_batches
         extra = extra_sum / dr.number_of_batches
-        t = datetime.datetime.now().strftime('%H:%M:%S')
-        self._log(t + ': cost {:.4f}, {}'.format(
-            cost, dict(zip(extra_fetches.keys(), extra))))
+        self._log('cost {:.4f}, {}'.format(cost,
+                                           dict(
+                                               zip(extra_fetches.keys(),
+                                                   extra))))
 
     @abc.abstractmethod
     def _build_graph(self):
@@ -177,17 +178,19 @@ class AbstractModel(object):
             Returns tuple (input node, target labels node, probs node) (nodes 
             are of type tf.Tensor, the first 2 being placeholders)
          """
-        return None, None, None
+        return AbstractModel.EssentialNodes(None, None, None, None, None)
 
     def _run_session(self, fetches: list, images, labels=None):
-        feed_dict = {self._input: images}
+        feed_dict = {self.nodes.input: images}
         if labels is not None:
-            feed_dict[self._target] = np.array([
-                dense_to_one_hot(lab, self._class_count)
+            feed_dict[self.nodes.target] = np.array([
+                dense_to_one_hot(lab, self.class_count)
                 for i, lab in enumerate(labels)
             ])
         return self._sess.run(fetches, feed_dict)
 
     def _log(self, text: str):
-        self.log += [datetime.datetime.now().strftime('%H:%M:%S') + text]
+        timestr = datetime.datetime.now().strftime('%H:%M:%S')
+        text = "[{}] {}".format(timestr, text)
+        self.log.append(text)
         print(text)
