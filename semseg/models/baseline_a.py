@@ -18,8 +18,8 @@ class BaselineA(AbstractModel):
                  class_count,
                  class0_unknown=False,
                  batch_size=20,
-                 conv_layer_count=2,
-                 learning_rate=5e-3,
+                 conv_layer_count=3,
+                 learning_rate=1e-3,
                  training_log_period=1,
                  save_path="storage/models",
                  name='BaselineA'):
@@ -99,6 +99,7 @@ class BaselineA(AbstractModel):
 def main(epoch_count=1):
     from data import Dataset
     from data.preparers import Iccv09Preparer
+    from util import console, visualizer
 
     data_path = os.path.join(
         os.path.dirname(__file__), '../storage/datasets/iccv09')
@@ -113,11 +114,23 @@ def main(epoch_count=1):
         input_shape=ds.image_shape,
         class_count=ds.class_count,
         class0_unknown=True,
-        batch_size=20,
+        batch_size=16,
         save_path="../storage/models",
         name='baseline_a-bs8')
+
+    def handle_step(i):
+        text = console.read_line(impatient=True, discard_non_last=True)
+        if text == 'd':
+            viz.display(ds_val, lambda im: model.predict([im])[0])
+        elif text == 'q':
+            return True
+        return False
+
+    model.training_step_event_handler = handle_step
+
+    viz = visualizer.Visualizer()
     print("Starting training and validation loop...")
-    model.test(ds_val)
+    #model.test(ds_val)
     for i in range(epoch_count):
         model.train(ds_train, epoch_count=1)
         model.test(ds_val)

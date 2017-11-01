@@ -47,6 +47,8 @@ class AbstractModel(object):
         self._saver = tf.train.Saver(
             max_to_keep=10, keep_checkpoint_every_n_hours=2)
 
+        self.training_step_event_handler = lambda step: False
+
     def __del__(self):  # I am not sure whether this is good
         self._sess.close()
         ops.reset_default_graph()
@@ -81,15 +83,12 @@ class AbstractModel(object):
     def predict(self, images: list, probs=False):
         """
             Requires the pixelwise-class probabilities TensorFlow graph node
-            to be referenced by `self._probs`.
+            to be referenced by `self.nodes.probs`.
             It would be good to modify it to do forward propagation in batches
             istead of single images.
         """
-        predict_probs = lambda im: self._run_session([self.nodes.probs], [im])[0]
-        probs = [predict_probs(im) for _, im in enumerate(images)]
-        if not probs:
-            return [one_hot_to_dense(p) for p in probs]
-        return probs
+        pr_probs = self._run_session([self.nodes.probs], images)[0]
+        return pr_probs if probs else [one_hot_to_dense(p) for p in pr_probs]
 
     def train(self,
               train_data: Dataset,
@@ -107,7 +106,8 @@ class AbstractModel(object):
         self._test(dataset, extra_fetches=dict())
 
     def _train_minibatch(self, images, labels, extra_fetches: list = []):
-        fetches = [self.nodes.training_step, self.nodes.loss] + list(extra_fetches)
+        fetches = [self.nodes.training_step, self.nodes.loss
+                   ] + list(extra_fetches)
         evals = self._run_session(fetches, images, labels)
         cost, extra = evals[1], evals[2:]
         return cost, extra
@@ -140,14 +140,12 @@ class AbstractModel(object):
             for b in range(dr.number_of_batches):
                 images, labels = dr.get_next_batch()
                 cost, extra = self._train_minibatch(images, labels,
-                                               extra_fetches.values())
+                                                    extra_fetches.values())
                 log_training_step(b, cost,
                                   dict(zip(extra_fetches.keys(), extra)))
-                #if visitor.minibatch_completed(b, images, labels) == True:
-                #   end = True
+                if self.training_step_event_handler(b) == True:
+                    end = True
             self.completed_epoch_count += 1
-            #if visitor.epoch_completed(ep, images, labels) == True:
-            #    end = True
             if end:
                 break
 
@@ -158,7 +156,7 @@ class AbstractModel(object):
         for _ in range(dr.number_of_batches):
             images, labels = dr.get_next_batch()
             cost, extra = self._test_minibatch(images, labels,
-                                          extra_fetches.values())
+                                               extra_fetches.values())
             cost_sum += cost
             extra_sum += np.array(extra)
         cost = cost_sum / dr.number_of_batches

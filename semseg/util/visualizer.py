@@ -1,42 +1,70 @@
-import cv2  # Can it be replaced with matplotlib and skimage?
 import numpy as np
+import skimage, matplotlib.pyplot as plt
+
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # semseg/*
+from data import Dataset
 
 
 class Visualizer:
+    """
+        Press "q" to close window. Press anything else to change the displayed
+        composite image.
+    """
     def __init__(self, name='default'):
         self.name = name
 
-    def __del__(self):
-        cv2.destroyAllWindows()
-        for i in range(4):
-            cv2.waitKey(1)
+    def display(self, dataset: Dataset, predictor=None):
+        from processing.encoding import normalize
+        import matplotlib as mpl
+        mpl.use('wxAgg')
 
-    def __enter__(self):
-        pass
+        cmap = mpl.cm.get_cmap('Spectral')
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        del self
+        def process_labels(lab):
+            colors = [
+                np.array(cmap(i / (dataset.class_count - 2))[:3])
+                for i in range(dataset.class_count - 1)
+            ]
+            plab = skimage.color.label2rgb(
+                lab, image=None, colors=colors, bg_label=0)
+            return plab
 
-    def display_with_labels(self, image, labels):
-        """ 
-            Displays image mixed with lables alongside with labels only until a 
-            key is pressed and returns the key.
-            `labels` are WxH images with pixel-values in {0..C}, where W is 
-            width, H height, and C the number non-background of classes (0 is 
-            background (unlabeled) and should be black)
-        """
-        labels = cv2.applyColorMap(labels, cv2.COLORMAP_HSV)
-        a = np.concatenate(
-            (image, cv2.addWeighted(labels, 0.5, image, 0.5, 0),
-             (labels * 0.7).astype(np.uint8)),
-            axis=1)
-        cv2.imshow(self.name, a)
-        key = cv2.waitKey(0) & 255
-        return key
+        def fuse(im1, im2, a):
+            return a * im1 + (1 - a) * im2
 
-    def display_image(self, image):
-        """ Displays image until a key is pressed and returns the key. """
-        cv2.imshow(self.name, image)
-        key = cv2.waitKey(0) & 255
-        return key
+        def get_frame(im, lab):
+            nim = normalize(im)
+            labs = [process_labels(lab)]
+            if predictor is not None:
+                labs = [process_labels(predictor(im))] + labs
+            flabs = [nim] + [fuse(nim, la, 0.5) for la in labs]
+            labs = [nim] + labs
+            fin = np.concatenate(
+                [np.concatenate((t, b), axis=1) for t, b in zip(labs, flabs)],
+                axis=0)
+            return fin
 
+        frames = [None for _ in range(dataset.size)]
+        frames[0] = get_frame(*dataset[0])
+        i = 0
+
+        def on_press(event):
+            nonlocal i
+            if event.key == 'a':
+                i -= 1
+            elif event.key == 'q':
+                plt.close(event.canvas.figure)
+                return
+            else:
+                i += 1
+            i = i % dataset.size
+            if frames[i] is None:
+                frames[i] = get_frame(*dataset[i])
+            imgplot.set_data(frames[i])
+            fig.canvas.draw()
+
+        fig, ax = plt.subplots()
+        fig.canvas.mpl_connect('key_press_event', on_press)
+        imgplot = ax.imshow(frames[0])
+        plt.show()

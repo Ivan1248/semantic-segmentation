@@ -22,9 +22,9 @@ class Test(unittest.TestCase):
             os.path.dirname(__file__), '../storage/datasets/iccv09')
         prepared_data_path = data_path + '.prepared'
         printt("Deleting prepared dataset if it already exists...")
-        if os.path.exists(prepared_data_path):
+        """if and os.path.exists(prepared_data_path):
             shutil.rmtree(
-                prepared_data_path, ignore_errors=False, onerror=None)
+                prepared_data_path, ignore_errors=False, onerror=None)"""
         printt('Preparing dataset in "{}". This will probably take several minutes...'.format(prepared_data_path))
         assert (prepared_data_path == Iccv09Preparer.prepare(data_path))
         printt('Dataset prepared.')
