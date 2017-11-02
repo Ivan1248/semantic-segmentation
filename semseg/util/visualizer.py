@@ -11,6 +11,7 @@ class Visualizer:
         Press "q" to close window. Press anything else to change the displayed
         composite image.
     """
+
     def __init__(self, name='default'):
         self.name = name
 
@@ -19,15 +20,21 @@ class Visualizer:
         import matplotlib as mpl
         mpl.use('wxAgg')
 
-        cmap = mpl.cm.get_cmap('Spectral')
+        cmap = mpl.cm.get_cmap('hsv')
+
+        colors = [np.zeros(3)] + [
+            np.array(cmap(i / (dataset.class_count - 2))[:3])
+            for i in range(dataset.class_count - 1)
+        ]
 
         def process_labels(lab):
-            colors = [
-                np.array(cmap(i / (dataset.class_count - 2))[:3])
-                for i in range(dataset.class_count - 1)
-            ]
-            plab = skimage.color.label2rgb(
-                lab, image=None, colors=colors, bg_label=0)
+            plab = np.empty(list(lab.shape) + [3])
+            for i in range(lab.shape[0]):
+                for j in range(lab.shape[1]):
+                    try:
+                        plab[i, j, :] = colors[lab[i, j]]
+                    except:
+                        print(lab[i, j], dataset.class_count)
             return plab
 
         def fuse(im1, im2, a):
@@ -39,14 +46,12 @@ class Visualizer:
             if predictor is not None:
                 labs = [process_labels(predictor(im))] + labs
             flabs = [nim] + [fuse(nim, la, 0.5) for la in labs]
-            labs = [nim] + labs
+            labs = [nim] + [0.5 * l for l in labs]
             fin = np.concatenate(
                 [np.concatenate((t, b), axis=1) for t, b in zip(labs, flabs)],
                 axis=0)
             return fin
 
-        frames = [None for _ in range(dataset.size)]
-        frames[0] = get_frame(*dataset[0])
         i = 0
 
         def on_press(event):
@@ -59,12 +64,10 @@ class Visualizer:
             else:
                 i += 1
             i = i % dataset.size
-            if frames[i] is None:
-                frames[i] = get_frame(*dataset[i])
-            imgplot.set_data(frames[i])
+            imgplot.set_data(get_frame(*dataset[i]))
             fig.canvas.draw()
 
         fig, ax = plt.subplots()
         fig.canvas.mpl_connect('key_press_event', on_press)
-        imgplot = ax.imshow(frames[0])
+        imgplot = ax.imshow(get_frame(*dataset[0]))
         plt.show()

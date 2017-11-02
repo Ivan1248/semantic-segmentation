@@ -15,7 +15,7 @@ class Test(unittest.TestCase):
         data_path = os.path.join(
             os.path.dirname(__file__), '../storage/datasets/iccv09')
         data_path = Iccv09Preparer.prepare(data_path)
-        ds, _ = Dataset.load(data_path).split(0, 10)
+        ds = Dataset.load(data_path)
         viz = Visualizer("Test")
         viz.display(ds, lambda x: ds[0][1])
 

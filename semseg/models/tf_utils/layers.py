@@ -20,7 +20,8 @@ def max_pool(x, divisor):
 
 
 def resize(x, factor):
-    shape = np.array(x.shape[1:3]) * factor
+    shape = (np.array([d.value
+                       for d in x.shape[1:3]]) * factor + 0.5).astype(np.int)
     return x if factor == 1 else tf.image.resize_nearest_neighbor(x, shape)
 
 

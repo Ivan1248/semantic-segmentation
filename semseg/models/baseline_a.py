@@ -48,8 +48,11 @@ class BaselineA(AbstractModel):
         input = tf.placeholder(tf.float32, shape=input_shape)
         target = tf.placeholder(tf.float32, shape=output_shape)
 
+        # Downsampled input
+        h = resize(input, 0.25)
+
         # Hidden layers
-        h = conv(input, 3, layer_width(0))
+        h = conv(h, 3, layer_width(0))
         h = tf.nn.relu(h)
         for l in range(1, self.conv_layer_count):
             h = max_pool(h, 2)
@@ -59,7 +62,7 @@ class BaselineA(AbstractModel):
         # Pixelwise softmax classification
         logits = conv(h, 1, self.class_count)
         probs = tf.nn.softmax(logits)
-        probs = resize(probs, 2**(self.conv_layer_count - 1))
+        probs = resize(probs, 4*2**(self.conv_layer_count - 1))
 
         # Training and evaluation
         clipped_probs = tf.clip_by_value(probs, 1e-10, 1.0)
