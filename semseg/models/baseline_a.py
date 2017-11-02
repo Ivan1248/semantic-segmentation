@@ -18,8 +18,8 @@ class BaselineA(AbstractModel):
                  class_count,
                  class0_unknown=False,
                  batch_size=20,
-                 conv_layer_count=3,
-                 learning_rate=1e-3,
+                 conv_layer_count=4,
+                 learning_rate=4e-4,
                  training_log_period=1,
                  save_path="storage/models",
                  name='BaselineA'):
@@ -47,22 +47,25 @@ class BaselineA(AbstractModel):
         # Input image and labels placeholders
         input = tf.placeholder(tf.float32, shape=input_shape)
         target = tf.placeholder(tf.float32, shape=output_shape)
+        scale = 1
 
         # Downsampled input
-        h = resize(input, 0.25)
+        h = resize(input, 0.5)
+        scale *= 2
 
         # Hidden layers
         h = conv(h, 3, layer_width(0))
         h = tf.nn.relu(h)
         for l in range(1, self.conv_layer_count):
             h = max_pool(h, 2)
+            scale *= 2
             h = conv(h, 3, layer_width(l))
             h = tf.nn.relu(h)
 
         # Pixelwise softmax classification
         logits = conv(h, 1, self.class_count)
         probs = tf.nn.softmax(logits)
-        probs = resize(probs, 4*2**(self.conv_layer_count - 1))
+        probs = resize(probs, scale)
 
         # Training and evaluation
         clipped_probs = tf.clip_by_value(probs, 1e-10, 1.0)
@@ -107,8 +110,9 @@ def main(epoch_count=1):
     data_path = os.path.join(
         os.path.dirname(__file__), '../storage/datasets/iccv09')
     data_path = Iccv09Preparer.prepare(data_path)
-    print("Loading data...")
+    print("Loading and deterministically shuffling data...")
     ds = Dataset.load(data_path)
+    ds.shuffle(order_determining_number=0.5)
     print("Splitting dataset...")
     ds_trainval, ds_test = ds.split(0, int(ds.size * 0.8))
     ds_train, ds_val = ds_trainval.split(0, int(ds_trainval.size * 0.8))

@@ -42,28 +42,29 @@ semseg
 
 ## How to contribute
 - pick one or more tasks (move it to _Work in progress_ and add "~" followed by your name(s))
-- modify this README if you have some idea: add, remove or modify any section as you like
+- modify this README whenever you think something should be changed/added/removed
 
 ## Tasks
 #### High priority
 - write more unit tests where needed
-- improve `models.BaselineA`
 - check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`)
-- implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy (maybe tensorflow too)
-- make `Dataset` bahavior reproducible/deterministic
+- create `tf_utils.evaluation` and move there accuracy calculation from `AbstractModel` 
+- implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy
+- move the accuracy measure from AbstractModel to `tf_utils.evaluation`, add (mean) IoU as well
+- add `stride:int` and `dilation:int` parameters to `tf_utils.layers.conv`
 #### Medium priority
 - create a dummy baseline that assigns each pixel to the most frequent class in the training set (no TensorFlow required)
 - add batch normalization to `tf_utils.layers`, use `tf.layers.batch_normalization(input_layer, fused=True, data_format='NCHW')`
-- add `stride:int` and `dilation:int` parameters to `tf_utils.layers.conv`
-- test and fix `processing.shape` - `resize` isn't tested
+- improve random seeding in `Dataset` for beter reproducitibility
+- add ResNet layers and encoder/decoder blocks used in LinkNet to `tf_utils.blocks`  
 #### Low priority
-- improve the colors in `util.visualizer.Visualizer`
 - improve documentation (and documentation style)
 - make a baseline similar to `BaselineA` that uses strided convolutions instead of pooling layers (use 3x3 conv with stride 2 instead of pool->conv)
 - add transposed convolution to `tf_utils.layers`
 - fix and test `processing.transform.py` (replace `cv2` with `skimage`)
-- add ResNet layers and encoder/decoder blocks used in LinkNet to `tf_utils.blocks`  
 - use polynomial learning rate decay
+- make a better baseline
+- test and fix `processing.shape` - `resize` isn't tested
 #### Work in progress
 - waiting for others ~ Ivan
 #### Completed
@@ -72,11 +73,11 @@ semseg
 - complete `abstract_model`
 - make the cost function (as well as other used evaluation measures) in `BaselineA` ignore "unknown" class (class 0)
 - implement `util.Visualizer` 
-
+- improve the colors in `util.visualizer.Visualizer`
 
 ## Current validation results on _Stanford Background Dataset_
-Model     | mIoU | Pixel accuracy | Epoch count | Inference time<sup>[*](#myfootnote1)</sup>
---------- | ----:| --------------:| -----------:| -
-BaselineA | -    | -              | 15          | ?
+Model                 | mIoU | Pixel acc. | #epochs | Infer. time [s] | Hardware        |
+--------------------- | ----:| ----------:| -------:| ---------------:| ----------------|
+BaselineA(lr:4e-4)    | -    |      0.603 |     150 | (mb16)  ~<0.100 | Pentium 2020M   |
 
-<a name="myfootnote1">*</a>on what hardware?
+_"Inference time" - on what hardware?_

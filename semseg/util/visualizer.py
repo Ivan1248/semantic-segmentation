@@ -23,7 +23,7 @@ class Visualizer:
         cmap = mpl.cm.get_cmap('hsv')
 
         colors = [np.zeros(3)] + [
-            np.array(cmap(i / (dataset.class_count - 2))[:3])
+            np.array(cmap(0.8*i / (dataset.class_count - 2))[:3])
             for i in range(dataset.class_count - 1)
         ]
 

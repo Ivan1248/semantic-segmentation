@@ -40,10 +40,10 @@ class Dataset:
     def class_count(self):
         return self._class_count
 
-    def shuffle(self, order_determining_number: float = -1):
+    def shuffle(self, order_determining_number: float = None):
         """ Shuffles the data. """
         image_label_pairs = list(zip(self.images, self.labels))
-        if order_determining_number < 0:
+        if order_determining_number is None:
             random.shuffle(image_label_pairs)
         else:
             random.shuffle(image_label_pairs, lambda: order_determining_number)

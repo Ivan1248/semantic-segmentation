@@ -161,10 +161,8 @@ class AbstractModel(object):
             extra_sum += np.array(extra)
         cost = cost_sum / dr.number_of_batches
         extra = extra_sum / dr.number_of_batches
-        self._log('cost {:.4f}, {}'.format(cost,
-                                           dict(
-                                               zip(extra_fetches.keys(),
-                                                   extra))))
+        ev = dict(zip(extra_fetches.keys(), extra))
+        self._log('cost {:.4f}, {}'.format(cost, ev))
 
     @abc.abstractmethod
     def _build_graph(self):
