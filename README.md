@@ -53,12 +53,13 @@ semseg
 - move the accuracy measure from AbstractModel to `tf_utils.evaluation`, add (mean) IoU as well
 - add `stride:int` and `dilation:int` parameters to `tf_utils.layers.conv` (use `tf.nn.convolution`)
 - implement inference time measurement depending on mini-batch size
-#### Medium priority
+#### Medium priority7
 - create a dummy baseline that assigns each pixel to the most frequent class in the training set (no TensorFlow required)
 - add batch normalization to `tf_utils.layers`, use `tf.layers.batch_normalization(input_layer, fused=True, data_format='NCHW')`
 - improve random seeding in `Dataset` for beter reproducibility
 - add ResNet layers and encoder/decoder blocks used in LinkNet to `tf_utils.blocks`
 - implement a textual options menu that can be opened while training is paused, enabling network output visualization, saving/loading of weights, stopping training (after the current epoch) and other actions
+- use `tf.nn.sparse_softmax_cross_entropy_with_logits` for more efficient training
 #### Low priority
 - improve documentation (and documentation style)
 - make a baseline similar to `BaselineA` that uses strided convolutions instead of pooling layers (use 3x3 conv with stride 2 instead of pool->conv)
@@ -67,6 +68,7 @@ semseg
 - use polynomial learning rate decay
 - make a better baseline
 - test and fix `processing.shape` - `resize` isn't tested
+- try IoU loss (like [here](http://angusg.com/writing/2016/12/28/optimizing-iou-semantic-segmentation.html))
 #### Work in progress
 - waiting for others ~ Ivan
 #### Completed
