@@ -29,7 +29,6 @@ class AbstractModel(object):
             class_count,
             batch_size: int,  # mini-batch size
             training_log_period=1,
-            save_path="storage/models",
             name='SS-DCNN'):
         self.name = name
 
@@ -43,7 +42,6 @@ class AbstractModel(object):
 
         self.training_log_period = training_log_period
         self.log = []
-        self.save_path = save_path
         self._saver = tf.train.Saver(
             max_to_keep=10, keep_checkpoint_every_n_hours=2)
 

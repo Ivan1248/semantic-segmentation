@@ -49,22 +49,22 @@ semseg
 - check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`)
 - implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy
 - move the accuracy measure from AbstractModel to `tf_utils.evaluation`, add (mean) IoU as well
-- add `stride:int` and `dilation:int` parameters to `tf_utils.layers.conv` (use `tf.nn.convolution`)
 - implement inference time measurement depending on mini-batch size
+- improve model saving (make more use of `tf.train.Saver`)
 #### Medium priority
-- create a dummy baseline that assigns each pixel to the most frequent class in the training set (no TensorFlow required)
 - add batch normalization to `tf_utils.layers`, use `tf.layers.batch_normalization(input_layer, fused=True, data_format='NCHW')`
 - improve random seeding in `Dataset` for beter reproducibility
 - add ResNet layers and encoder/decoder blocks used in LinkNet to `tf_utils.blocks`
 - implement a textual options menu that can be opened while training is paused, enabling network output visualization, saving/loading of weights, stopping training (after the current epoch) and other actions
 - use `tf.nn.sparse_softmax_cross_entropy_with_logits` for more efficient training
+- make `Dataset` not shuffle the images, but an array of indexes so that the order can be reset
 #### Low priority
+- create a dummy baseline that assigns each pixel to the most frequent class in the training set (no TensorFlow required)
 - improve documentation (and documentation style)
 - make a baseline similar to `BaselineA` that uses strided convolutions instead of pooling layers (use 3x3 conv with stride 2 instead of pool->conv)
 - add transposed convolution to `tf_utils.layers`
 - fix and test `processing.transform.py` (replace `cv2` with `skimage`)
 - use polynomial learning rate decay
-- make a better baseline
 - test and fix `processing.shape` - `resize` isn't tested
 - try IoU loss (like [here](http://angusg.com/writing/2016/12/28/optimizing-iou-semantic-segmentation.html))
 #### Work in progress
@@ -77,6 +77,7 @@ semseg
 - implement `util.Visualizer` 
 - improve the colors in `util.visualizer.Visualizer`
 - enable usage of `util.Visualizer` while training (by pressing _d_ followed by _ENTER_ in the console)
+- add `stride:int` and `dilation:int` parameters to `tf_utils.layers.conv` (use `tf.nn.convolution`)
 
 ## Current validation results on _Stanford Background Dataset_
 Model        | mIoU | Pixel acc. | #epochs  | Infer. time [s] | Hardware        |

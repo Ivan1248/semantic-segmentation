@@ -21,7 +21,6 @@ class BaselineA(AbstractModel):
                  conv_layer_count=4,
                  learning_rate=1e-3,
                  training_log_period=1,
-                 save_path="storage/models",
                  name='BaselineA'):
         self.conv_layer_count = conv_layer_count
         self.learning_rate = learning_rate
@@ -32,11 +31,10 @@ class BaselineA(AbstractModel):
             class_count=class_count,
             batch_size=batch_size,
             training_log_period=training_log_period,
-            save_path=save_path,
             name=name)
 
     def _build_graph(self):
-        from tf_utils.layers import conv, max_pool, rescale_bilinear
+        from tf_utils.layers import conv, max_pool, rescale_bilinear, avg_pool
 
         def layer_width(layer: int):  # number of features per pixel in layer
             return self.input_shape[2] * 4**(layer + 1)
@@ -55,7 +53,7 @@ class BaselineA(AbstractModel):
         h = conv(h, 3, layer_width(0))
         h = tf.nn.relu(h)
         for l in range(1, self.conv_layer_count):
-            h = max_pool(h, 2)
+            h = avg_pool(h, 2)
             h = conv(h, 3, layer_width(l))
             h = tf.nn.relu(h)
 
@@ -140,6 +138,7 @@ def main(epoch_count=1):
     for i in range(epoch_count):
         model.train(ds_train, epoch_count=1)
         model.test(ds_val)
+    model.save_state()
 
 
 if __name__ == '__main__':

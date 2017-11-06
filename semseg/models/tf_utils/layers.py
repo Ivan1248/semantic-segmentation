@@ -34,6 +34,11 @@ def max_pool(x, stride):
                           'SAME')
 
 
+def avg_pool(x, stride):
+    return tf.nn.avg_pool(x, [1, stride, stride, 1], [1, stride, stride, 1],
+                          'SAME')
+
+
 def _get_rescaled_shape(x, factor):
     return (np.array([d.value
                       for d in x.shape[1:3]]) * factor + 0.5).astype(np.int)
