@@ -118,7 +118,6 @@ def main(epoch_count=1):
         class_count=ds.class_count,
         class0_unknown=True,
         batch_size=16,
-        save_path="../storage/models",
         name='BaselineA-bs16', 
         training_log_period=5)
 

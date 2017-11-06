@@ -126,9 +126,8 @@ class AbstractModel(object):
                       .format(epoch_count, batch_count, batch_size))
 
         def log_training_step(step, cost, extra):
-            if step % self.training_log_period == 0:
-                self._log(' epoch {:d}, step {:d}, cost {:.4f}, {}'.format(
-                    self.completed_epoch_count, b, cost, extra))
+            self._log(' epoch {:d}, step {:d}, cost {:.4f}, {}'.format(
+                self.completed_epoch_count, b, cost, extra))
 
         dr = MiniBatchReader(train_data, self.batch_size)
         log_training_start(epoch_count, dr.number_of_batches, self.batch_size)
@@ -139,8 +138,9 @@ class AbstractModel(object):
                 images, labels = dr.get_next_batch()
                 cost, extra = self._train_minibatch(images, labels,
                                                     extra_fetches.values())
-                log_training_step(b, cost,
-                                  dict(zip(extra_fetches.keys(), extra)))
+                if b % self.training_log_period == 0 or b == dr.number_of_batches - 1:
+                    log_training_step(b, cost,
+                                      dict(zip(extra_fetches.keys(), extra)))
                 if self.training_step_event_handler(b) == True:
                     end = True
             self.completed_epoch_count += 1
