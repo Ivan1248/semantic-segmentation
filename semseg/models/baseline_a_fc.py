@@ -12,7 +12,7 @@ from util.training_visitor import DummyTrainingVisitor
 from abstract_model import AbstractModel
 
 
-class BaselineA(AbstractModel):
+class BaselineAFC(AbstractModel):
     def __init__(self,
                  input_shape,
                  class_count,
@@ -53,8 +53,7 @@ class BaselineA(AbstractModel):
         h = conv(h, 3, layer_width(0))
         h = tf.nn.relu(h)
         for l in range(1, self.conv_layer_count):
-            h = avg_pool(h, 2)
-            h = conv(h, 3, layer_width(l))
+            h = conv(h, 3, layer_width(l), stride=2)
             h = tf.nn.relu(h)
 
         # Pixelwise softmax classification and label upscaling
@@ -113,7 +112,7 @@ def main(epoch_count=1):
     ds_trainval, ds_test = ds.split(0, int(ds.size * 0.8))
     ds_train, ds_val = ds_trainval.split(0, int(ds_trainval.size * 0.8))
     print("Initializing model...")
-    model = BaselineA(
+    model = BaselineAFC(
         input_shape=ds.image_shape,
         class_count=ds.class_count,
         class0_unknown=True,
