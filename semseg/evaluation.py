@@ -6,61 +6,64 @@ from processing.labels import dense_to_one_hot, one_hot_to_dense
 # recall=tp/(tp+fn)  # class accuracy
 # IoU=tp/(tp+fn+fp)
 # mIoU=class average IoU
+# accuracy = (tp + tn)/(tp + tn + fp + fn)
 
-def compute_precision_recall_iou_pa(predictions, trues):
-    """
-    pred, true: one_hot vector pixels (w,h,c)
-    """
-    n, shape = len(trues), trues[0].shape
-    class_count = predictions[0].shape[2]
-    tp = np.zeros(class_count)
-    fp = np.zeros(class_count)
-    fn = np.zeros(class_count)
-    n = 0
-    for pred, true in zip(predictions, trues):
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                for c in range(class_count):
-                    if pred[i, j, c] == 1:
-                        if true[i, j, c] == 1:
-                            tp[c] += 1
-                        else:
-                            fp[c] += 1
-                    elif true[i, j, c] == 1:
-                        fn[c] += 1
-        n += 1
-        print(str(n) + '/' + str(len(trues)))
+# tp - true positives
+# fp - false positives
+# fn - false negatives
+# fp - false positives
 
-    precision = sum(0 if tp[i] == 0 else tp[i] / (tp[i] + fp[i]) for i in range(class_count)) / class_count
-    recall = sum(0 if tp[i] == 0 else tp[i] / (tp[i] + fn[i]) for i in range(class_count)) / class_count
-    iou = sum(0 if tp[i] == 0 else tp[i] / (tp[i] + fn[i] + fp[i]) for i in range(class_count)) / class_count
-    pixel = sum(tp) / (n * shape[0] * shape[1])
-    print("Precision: " + str(precision))
-    print("Recall (class accuracy): " + str(recall))
-    print("IOU accuracy: " + str(iou))
-    print("Pixel accuracy: " + str(pixel))
-    return precision, recall, iou, pixel
+# recall - udio stvarnih piksela klase koji su pogodjeni (presjek/skup stvarnih piksela)
+# precision - udio piksela pozitivno klasificiranih u klasu 1
+# accuracy -
 
+def compute_IoU(predictions, trues, classes, for_every_class=False):
+	"""
+	Computes mean intersection over union. 
+	
+	If for some reason, we want to see
+	IoU for every class, you can set param for_every_class on True, and function will
+	return dictionary where keys are classes and items are IoU values for each class.
+	
+	:param predictions: numpy array (values that NN predicted)
+	:param trues: numpy array (values that are true)
+	:param classes: numpy array (classes for which we want to inspect)
+	:return: float || dict{int : float}
+	"""
+	dict_of_trues = dict()  # keys: classes, values: number of true predicted elements
+	result_dict = dict()  # keys: classes, values: IoUs
 
-def class_accuracy(trues: list, predictions: list, class_count: int):
-    results = np.zeros((class_count, 2))
-    for l in range(len(trues)):
-        # t = denso
-        for i in range(trues[l].shape[0]):
-            for j in range(trues[l].shape[1]):
-                t = trues[l][i, j]
-                results[t, t == predictions[l][i, j]] += 1
-    return results
+	# initializing dictionaries
+	for clas in classes:
+		dict_of_trues[clas] = 0  # trues
+		result_dict[clas] = 0
+
+	# going through both predictions and trues
+	for (pre, tru) in zip(predictions, trues):
+		if pre == tru:  # where predictions are equal to trues,
+			dict_of_trues[tru] += 1  # increase dict_of_trues on this specific key by 1
+
+	sum_of_IoUs = 0
+
+	# iterating over keys of result_dict
+	for key in result_dict.keys():
+		result_dict[key] = dict_of_trues[key]/len(predictions)  # calculating IoU for each class
+		sum_of_IoUs += result_dict[key]  # adding that IoU to sum of IoUs
+
+	if for_every_class:  # returning dictionary of IoUs for each class
+		return result_dict
+	else:				 # returning mean IoU
+		return sum_of_IoUs/len(classes)
 
 
 if __name__ == '__main__':
-    pre = np.array([[[1, 0],
-                     [0, 1],
-                     [0, 1]]])
 
-    tru = np.array([[[1, 0],
-                     [1, 0],
-                     [1, 0]]])
+	# testing compute_IoU function
+	pre = np.array([0, 1, 1])
+	tru = np.array([0, 0, 0])
+	classes = np.array([0, 1])
+	result_dict = compute_IoU(pre, tru, classes, for_every_class=True)
+	for key, item in result_dict.items():
+		print("For class {}, IoU value is: {}".format(key, item))
 
-    a, b, c = compute_precision_recall_iou_pa([pre], [tru])
-    pass
+	print(compute_IoU(pre, tru, classes))
