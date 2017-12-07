@@ -53,6 +53,7 @@ class Test(unittest.TestCase):
         save_image(image, dirpath, "saved")
         save_path = os.path.join(dirpath, "saved.png")
         image = load_image(save_path)
+        print("image shape:{}".format(image.shape))
         import skimage.util
         skimage.io.imshow(
             skimage.util.pad(

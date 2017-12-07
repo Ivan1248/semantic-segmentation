@@ -100,7 +100,7 @@ class BaselineAFC(AbstractModel):
 def main(epoch_count=1):
     from data import Dataset
     from data.preparers import Iccv09Preparer
-    from util import console, visualizer
+    from util import console, visualization
 
     data_path = os.path.join(
         os.path.dirname(__file__), '../storage/datasets/iccv09')
@@ -130,7 +130,7 @@ def main(epoch_count=1):
 
     model.training_step_event_handler = handle_step
 
-    viz = visualizer.Visualizer()
+    viz = visualization.Visualizer()
     print("Starting training and validation loop...")
     #model.test(ds_val)
     for i in range(epoch_count):

@@ -12,7 +12,7 @@ from util.training_visitor import DummyTrainingVisitor
 from abstract_model import AbstractModel
 
 
-class BaselineA(AbstractModel):
+class BaselineAT(AbstractModel):
     def __init__(self,
                  input_shape,
                  class_count,
@@ -36,8 +36,8 @@ class BaselineA(AbstractModel):
     def _build_graph(self):
         from tf_utils.layers import conv, max_pool, rescale_bilinear, avg_pool
 
-        def layer_width(layer: int):  # number of features per pixel in layer
-            return 3 * 4**(layer + 1)
+        def layer_width(layer: int):  # number of channels (features per pixel)
+            return min([4 * 4**(layer + 1), 64])
 
         input_shape = [None] + list(self.input_shape)
         output_shape = input_shape[:3] + [self.class_count]
@@ -51,11 +51,11 @@ class BaselineA(AbstractModel):
 
         # Hidden layers
         h = conv(h, 3, layer_width(0))
-        h = tf.nn.relu(h)
+        #h = tf.nn.relu(h)
         for l in range(1, self.conv_layer_count):
-            h = avg_pool(h, 2)
+            h = max_pool(h, 2)
             h = conv(h, 3, layer_width(l))
-            h = tf.nn.relu(h)
+            #h = tf.nn.relu(h)
 
         # Pixelwise softmax classification and label upscaling
         logits = conv(h, 1, self.class_count)
@@ -68,7 +68,7 @@ class BaselineA(AbstractModel):
         cost = -tf.reduce_mean(ts(target) * tf.log(ts(clipped_probs)))
 
         # Optimization
-        optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+        optimizer = tf.train.AdamOptimizer(self.learning_rate)
         training_step = optimizer.minimize(cost)
 
         # Dense predictions and labels
@@ -113,11 +113,12 @@ def main(epoch_count=1):
     ds_trainval, ds_test = ds.split(0, int(ds.size * 0.8))
     ds_train, ds_val = ds_trainval.split(0, int(ds_trainval.size * 0.8))
     print("Initializing model...")
-    model = BaselineA(
+    model = BaselineAT(
         input_shape=ds.image_shape,
         class_count=ds.class_count,
         class0_unknown=True,
         batch_size=16,
+        learning_rate=1e-3,
         name='BaselineA-bs16', 
         training_log_period=5)
 

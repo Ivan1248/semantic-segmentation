@@ -13,20 +13,21 @@ class Dataset:
         TODO: rng seed, shuffle list of indices, not images -> add unshuffle function
     """
 
-    def __init__(self, images: list, labels: list, class_count: int):
-        self._images = images
-        self._labels = labels
+    def __init__(self, images, labels, class_count: int):
+        self._images = np.array(images)
+        self._labels = np.array(labels)
         self._class_count = class_count
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, key):
-        if isinstance(key, slice):
-            return self._images[key.start:key.stop:key.step], self.labels[
-                key.start:key.stop:key.step]
-        else:  # int
-            return self._images[key], self.labels[key]
+        if isinstance(key, int):  # int
+            return self.images[key], self.labels[key]
+        else:
+            return Dataset(
+                self.images.__getitem__(key),
+                self.labels.__getitem__(key), self.class_count)
 
     @property
     def size(self) -> int:
@@ -41,21 +42,38 @@ class Dataset:
         return self._class_count
 
     def shuffle(self, order_determining_number: float = None):
+        # TODO fix duplicate bug
         """ Shuffles the data. """
+        self._images=[im for im in self.images]  # duplicates appear if not list!!?
+        self._labels=[lb for lb in self.labels]
+        """for i in range(len(self.images)):
+            for j in range(i+1, len(self.images)):
+                if np.alltrue(self.images[i]==self.images[j]):
+                    print(i,j)
+        print("----")"""
         image_label_pairs = list(zip(self.images, self.labels))
         if order_determining_number is None:
             random.shuffle(image_label_pairs)
         else:
             random.shuffle(image_label_pairs, lambda: order_determining_number)
         self.images[:], self.labels[:] = zip(*image_label_pairs)
+        """for i in range(len(self.images)):
+            for j in range(i+1, len(self.images)):
+                if np.alltrue(self.images[i]==self.images[j]):
+                    print(i,j)
+        exit()"""
+        self._images=np.array(self.images)
+        self._labels=np.array(self.labels)
+
 
     def split(self, start, end):
         """ Splits the dataset into two smaller datasets. """
         first = Dataset(self.images[start:end], self.labels[start:end],
                         self.class_count)
-        second = Dataset(self.images[:start] + self.images[end:],
-                         self.labels[:start] + self.labels[end:],
-                         self.class_count)
+        second = Dataset(
+            np.concatenate([self.images[:start], self.images[end:]]),
+            np.concatenate([self.labels[:start], self.labels[end:]]),
+            self.class_count)
         return first, second
 
     @property
@@ -69,6 +87,9 @@ class Dataset:
     def get_an_example(self):
         i = random.randint(0, self.size - 1)
         return self.images[i], self.labels[i]
+
+    def unpack(self):
+        return self.images, self.labels
 
     @staticmethod
     def load(dataset_directory: str):
@@ -99,10 +120,11 @@ class MiniBatchReader:
         else:
             start = self.current_batch_number
         self.current_batch_number = end
-        return self.dataset[start:end]
+        return self.dataset[start:end].unpack()
 
     def get_generator(self):
         b = self.get_next_batch()
         while b is not None:
             b = self.get_next_batch()
             yield b
+

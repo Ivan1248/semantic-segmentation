@@ -47,6 +47,7 @@ semseg
 ## Tasks
 #### High priority
 - check whether there is a better way of (relative) importing of modules so that they work the same way independent of from what directory they are run from (currently paths are added manually to `sys.path`)
+- implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy
 - move the accuracy measure from AbstractModel to `tf_utils.evaluation`, add (mean) IoU as well
 - implement inference time measurement depending on mini-batch size
 - improve model saving (make more use of `tf.train.Saver`)
@@ -68,8 +69,6 @@ semseg
 - try IoU loss (like [here](http://angusg.com/writing/2016/12/28/optimizing-iou-semantic-segmentation.html))
 #### Work in progress
 - nothing specific ~ Ivan
-- implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy ~ Annie
-
 #### Completed
 - make data loading work (`data.preparers.Iccv09Preparer, data.Dataset`)
 - make a simple baseline
