@@ -90,8 +90,6 @@ class ResNet(AbstractModel):
         accuracy = tf.reduce_mean(
             tf.cast(tf.equal(preds, dense_labels), tf.float32))
 
-        #writer = tf.summary.FileWriter('logs', self._sess.graph)
-
         return AbstractModel.EssentialNodes(
             input=input,
             target=target,

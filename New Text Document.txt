@@ -1,1 +1,0 @@
-rsync -aHAXxv . igrubisic@161.53.65.68:~/projects/

@@ -37,7 +37,7 @@ class BaselineA(AbstractModel):
         from tf_utils.layers import conv, max_pool, rescale_bilinear, avg_pool
 
         def layer_width(layer: int):  # number of channels (features per pixel)
-            return min([4 * 4**(layer + 1), 64])
+            return min([4 * 4**(layer + 1), 128])
 
         # Input image and labels placeholders
         input_shape = [None] + list(self.input_shape)
