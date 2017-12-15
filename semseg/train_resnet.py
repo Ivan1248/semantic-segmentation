@@ -36,7 +36,7 @@ def get_wide_resnet(n, k, input_shape, class_count, dim_increase='conv1'):
         batch_size=16,
         learning_rate_policy={
             'boundaries': [60, 120, 160],
-            'values': [1e-1 * 0.2**i for i in range(4)]
+            'values': [1e-3 * 0.2**i for i in range(4)]
         },
         block_kind=ResidualBlockKind(
             ksizes=ksizes,

@@ -20,7 +20,7 @@ class ResNet(AbstractModel):
                  input_shape,
                  class_count,
                  class0_unknown=False,
-                 batch_size=128,
+                 batch_size=32,
                  learning_rate_policy=1e-2,
                  block_kind=layers.ResidualBlockKind([3, 3]),
                  group_lengths=[3, 3, 3],
