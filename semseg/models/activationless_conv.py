@@ -12,17 +12,17 @@ from util.training_visitor import DummyTrainingVisitor
 from abstract_model import AbstractModel
 
 
-class Cascadenet(AbstractModel):
+class BaselineAT(AbstractModel):
     def __init__(self,
                  input_shape,
                  class_count,
                  class0_unknown=False,
                  batch_size=32,
-                 conv_block_count=3,
+                 conv_layer_count=4,
                  learning_rate=1e-3,
                  training_log_period=1,
                  name='BaselineA'):
-        self.conv_block_count = conv_block_count
+        self.conv_layer_count = conv_layer_count
         self.learning_rate = learning_rate
         self.completed_epoch_count = 0
         self.class0_unknown = class0_unknown
@@ -34,12 +34,10 @@ class Cascadenet(AbstractModel):
             name=name)
 
     def _build_graph(self):
-        from tf_utils.layers import conv, conv_with_weights, max_pool, rescale_bilinear, avg_pool
-
-        stage_count = 3
+        from tf_utils.layers import conv, max_pool, rescale_bilinear, avg_pool
 
         def layer_width(layer: int):  # number of channels (features per pixel)
-            return min([8 * 4**(layer + 1), 128])
+            return min([8 * 4**(layer + 1), 64])
 
         input_shape = [None] + list(self.input_shape)
         output_shape = input_shape[:3] + [self.class_count]
@@ -49,35 +47,14 @@ class Cascadenet(AbstractModel):
         target = tf.placeholder(tf.float32, shape=output_shape)
 
         # Downsampled input (to improve speed at the cost of accuracy)
-        h = [input] + [rescale_bilinear(input, s) for s in [0.5, 0.25]]
-
-        def avg_pool_block():
-            for i in range(stage_count):
-                h[i] = avg_pool(h[i], 2)
-
-        def conv_block(depth, width):
-            for _ in range(depth):
-                h[0], (w, b) = conv(h[0], 3, width, return_params=True)
-                h[0] = tf.nn.relu(h[0])
-                for i in range(1, stage_count):
-                    h[i] = conv_with_weights(h[i], w, b)
-                    h[i] = tf.nn.relu(h[i])
-
-        def resize_equal_block(size):
-            for i in range(stage_count):
-                h[i] = tf.image.resize_nearest_neighbor(h[i], size)
+        h = rescale_bilinear(input, 0.5)
 
         # Hidden layers
-        conv_block(1, layer_width(0))
-        for l in range(1, self.conv_block_count):
-            avg_pool_block()
-            conv_block(2, layer_width(l))
-        resize_equal_block(h[0].shape[1:3])
-        h = tf.concat(h, axis=3)
-        h = conv(h, 3, h.shape[3].value//3, dilation=2)
-        h = conv(h, 3, h.shape[3].value//3, dilation=1)
-        #h = h[0] * tf.Variable(1.0) + h[1] * tf.Variable(
-        #   1.0) + h[1] * tf.Variable(1.0)
+        h = conv(h, 3, layer_width(0))
+        #h = tf.exp(-h**2)
+        for l in range(1, self.conv_layer_count):
+            h = conv(h, 3, layer_width(l), stride=2)
+            #h = tf.exp(-h**2)
 
         # Pixelwise softmax classification and label upscaling
         logits = conv(h, 1, self.class_count)
@@ -124,7 +101,6 @@ def main(epoch_count=1):
     from data import Dataset
     from data.preparers import Iccv09Preparer
     from util import console, visualization
-    from util.visualization import Visualizer
 
     data_path = os.path.join(
         os.path.dirname(__file__), '../storage/datasets/iccv09')
@@ -136,25 +112,26 @@ def main(epoch_count=1):
     ds_trainval, ds_test = ds.split(0, int(ds.size * 0.8))
     ds_train, ds_val = ds_trainval.split(0, int(ds_trainval.size * 0.8))
     print("Initializing model...")
-    model = Cascadenet(
+    model = BaselineAT(
         input_shape=ds.image_shape,
         class_count=ds.class_count,
         class0_unknown=True,
-        batch_size=16,  # 32
-        learning_rate=2e-5,
-        name='BaselineA-bs16',
+        batch_size=16,
+        learning_rate=1e-4,
+        name='BaselineA-bs16', 
         training_log_period=5)
 
-    def handle_step(step):
+    def handle_step(i):
         text = console.read_line(impatient=True, discard_non_last=True)
         if text == 'd':
-            Visualizer().display(ds_val, lambda im: model.predict([im])[0])
+            viz.display(ds_val, lambda im: model.predict([im])[0])
         elif text == 'q':
             return True
         return False
 
     model.training_step_event_handler = handle_step
 
+    viz = visualization.Visualizer()
     print("Starting training and validation loop...")
     #model.test(ds_val)
     for i in range(epoch_count):
@@ -164,7 +141,6 @@ def main(epoch_count=1):
 
 
 if __name__ == '__main__':
-    main(epoch_count=800)
+    main(epoch_count=200)
 
 # "GTX 970" 43 times faster than "Pentium 2020M @ 2.40GHz × 2"
-

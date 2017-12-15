@@ -153,6 +153,7 @@ def main(epoch_count=1):
     ds_val_copy = ds_val[:]
     ds_train_copy = ds_train[:]
     handle_epoch(0)
+    
     for i in range(epoch_count):
         model.train(ds_val, epoch_count=1)
         model.test(ds_val_copy)

@@ -37,7 +37,7 @@ class BaselineAT(AbstractModel):
         from tf_utils.layers import conv, max_pool, rescale_bilinear, avg_pool
 
         def layer_width(layer: int):  # number of channels (features per pixel)
-            return min([4 * 4**(layer + 1), 64])
+            return min([8 * 4**(layer + 1), 64])
 
         input_shape = [None] + list(self.input_shape)
         output_shape = input_shape[:3] + [self.class_count]
@@ -51,11 +51,11 @@ class BaselineAT(AbstractModel):
 
         # Hidden layers
         h = conv(h, 3, layer_width(0))
-        #h = tf.nn.relu(h)
+        #h = tf.exp(-h**2)
         for l in range(1, self.conv_layer_count):
             h = max_pool(h, 2)
             h = conv(h, 3, layer_width(l))
-            #h = tf.nn.relu(h)
+            #h = tf.exp(-h**2)
 
         # Pixelwise softmax classification and label upscaling
         logits = conv(h, 1, self.class_count)
@@ -118,7 +118,7 @@ def main(epoch_count=1):
         class_count=ds.class_count,
         class0_unknown=True,
         batch_size=16,
-        learning_rate=1e-3,
+        learning_rate=1e-4,
         name='BaselineA-bs16', 
         training_log_period=5)
 
