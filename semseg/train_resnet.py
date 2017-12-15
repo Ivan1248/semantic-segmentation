@@ -22,6 +22,7 @@ print("Initializing model...")
 from models import ResNet
 from models.tf_utils.layers import ResidualBlockKind
 
+
 def get_wide_resnet(n, k, input_shape, class_count, dim_increase='conv1'):
     group_count = 3
     ksizes = [3, 3]
@@ -32,7 +33,7 @@ def get_wide_resnet(n, k, input_shape, class_count, dim_increase='conv1'):
         input_shape=input_shape,
         class_count=ds_train.class_count,
         class0_unknown=True,
-        batch_size=128,
+        batch_size=16,
         learning_rate_policy={
             'boundaries': [60, 120, 160],
             'values': [1e-1 * 0.2**i for i in range(4)]
@@ -45,7 +46,7 @@ def get_wide_resnet(n, k, input_shape, class_count, dim_increase='conv1'):
         group_lengths=[blocks_per_group] * group_count,
         widening_factor=k,
         weight_decay=5e-4,
-        training_log_period=50)
+        training_log_period=10)
     assert n == model.zagoruyko_depth, "invalid depth (n={}!={})".format(
         n, model.zagoruyko_depth)
     return model
@@ -57,7 +58,7 @@ model = get_wide_resnet(
 
 print("Starting training and validation loop...")
 from training import train
-train(model, ds_train, ds_val,  epoch_count=200)
+train(model, ds_train, ds_val, epoch_count=200)
 
 print("Saving model...")
 """import datetime
