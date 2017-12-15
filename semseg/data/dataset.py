@@ -10,13 +10,15 @@ from dataset_dir import load_images, load_labels, load_info
 
 class Dataset:
     """
-        TODO: rng seed, shuffle list of indices, not images -> add unshuffle function
+        TODO: add unshuffle
     """
 
-    def __init__(self, images, labels, class_count: int):
-        self._images = np.array(images)
-        self._labels = np.array(labels)
+    def __init__(self, images, labels, class_count: int, random_seed=51):
+        self._images = np.ascontiguousarray(np.array(images))
+        self._labels = np.ascontiguousarray(np.array(labels))
         self._class_count = class_count
+        self._rand = np.random.RandomState(random_seed)
+        self._indices = np.arange(len(self._images))
 
     def __len__(self):
         return len(self.images)
@@ -24,10 +26,9 @@ class Dataset:
     def __getitem__(self, key):
         if isinstance(key, int):  # int
             return self.images[key], self.labels[key]
-        else:
-            return Dataset(
-                self.images.__getitem__(key),
-                self.labels.__getitem__(key), self.class_count)
+        return Dataset(
+            self.images.__getitem__(key),
+            self.labels.__getitem__(key), self.class_count)
 
     @property
     def size(self) -> int:
@@ -41,40 +42,34 @@ class Dataset:
     def class_count(self):
         return self._class_count
 
-    def shuffle(self, order_determining_number: float = None):
-        # TODO fix duplicate bug
-        """ Shuffles the data. """
-        self._images=[im for im in self.images]  # duplicates appear if not list!!?
-        self._labels=[lb for lb in self.labels]
-        """for i in range(len(self.images)):
-            for j in range(i+1, len(self.images)):
-                if np.alltrue(self.images[i]==self.images[j]):
-                    print(i,j)
-        print("----")"""
-        image_label_pairs = list(zip(self.images, self.labels))
-        if order_determining_number is None:
-            random.shuffle(image_label_pairs)
-        else:
-            random.shuffle(image_label_pairs, lambda: order_determining_number)
-        self.images[:], self.labels[:] = zip(*image_label_pairs)
-        """for i in range(len(self.images)):
-            for j in range(i+1, len(self.images)):
-                if np.alltrue(self.images[i]==self.images[j]):
-                    print(i,j)
-        exit()"""
-        self._images=np.array(self.images)
-        self._labels=np.array(self.labels)
+    def set_random_seed(seed:int):
+        self._rand.seed(seed)
 
+    def shuffle(self, random_seed=None):
+        indices = np.arange(self._images.shape[0])
+        self._rand.shuffle(indices)
+        arrs = [self._images, self._labels, self._indices]
+        arrs = [np.ascontiguousarray(arr[indices]) for arr in arrs]
+        self._images, self._labels, self._indices = arrs
+
+    def unshuffle(self, random_seed=None):
+        indices = np.zeros(len(self))
+        for i, k in enumerate(self._indices):
+            indices[k] = i
+        arrs = [self._images, self._labels, self._indices]
+        arrs = [np.ascontiguousarray(arr[indices]) for arr in arrs]
+        self._images, self._labels, self._indices = arrs
+
+    @staticmethod
+    def join(ds1, ds2):
+        assert (ds1.class_count == ds2.class_count)
+        return Dataset(
+            np.concatenate([ds1.images, ds2.images]),
+            np.concatenate([ds1.labels, ds2.labels]), ds1.class_count)
 
     def split(self, start, end):
-        """ Splits the dataset into two smaller datasets. """
-        first = Dataset(self.images[start:end], self.labels[start:end],
-                        self.class_count)
-        second = Dataset(
-            np.concatenate([self.images[:start], self.images[end:]]),
-            np.concatenate([self.labels[:start], self.labels[end:]]),
-            self.class_count)
-        return first, second
+        """ Splits the dataset into two datasets. """
+        return self[start:end], Dataset.join(self[:start], self[end:])
 
     @property
     def images(self):
@@ -83,10 +78,6 @@ class Dataset:
     @property
     def labels(self):
         return self._labels
-
-    def get_an_example(self):
-        i = random.randint(0, self.size - 1)
-        return self.images[i], self.labels[i]
 
     def unpack(self):
         return self.images, self.labels
@@ -127,4 +118,3 @@ class MiniBatchReader:
         while b is not None:
             b = self.get_next_batch()
             yield b
-

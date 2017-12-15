@@ -6,24 +6,37 @@ from tensorflow.python.framework import ops
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # /*
+sys.path.append(os.path.dirname(__file__))  # /models/
 from data import Dataset, MiniBatchReader
+from ioutils import path
 
 from abstract_model import AbstractModel
+from tf_utils import layers
 
 
-class BaselineA(AbstractModel):
+class ResNet(AbstractModel):
 
     def __init__(self,
                  input_shape,
                  class_count,
                  class0_unknown=False,
-                 batch_size=32,
-                 conv_layer_count=4,
-                 learning_rate_policy=1e-3,
+                 batch_size=128,
+                 learning_rate_policy=1e-2,
+                 block_kind=layers.ResidualBlockKind([3, 3]),
+                 group_lengths=[3, 3, 3],
+                 base_width=16,
+                 widening_factor=1,
+                 weight_decay=1e-4,
                  training_log_period=1,
-                 name='ClfBaselineA'):
-        self.conv_layer_count = conv_layer_count
+                 name='ResNet'):
         self.completed_epoch_count = 0
+        self.block_kind = block_kind
+        self.group_lengths = group_lengths
+        self.depth = 1 + sum(group_lengths) * len(block_kind.ksizes) + 1
+        self.zagoruyko_depth = self.depth - 1 + len(group_lengths)
+        self.base_width = base_width
+        self.widening_factor = widening_factor
+        self.weight_decay = weight_decay
         self.class0_unknown = class0_unknown
         super().__init__(
             input_shape=input_shape,
@@ -34,10 +47,7 @@ class BaselineA(AbstractModel):
             name=name)
 
     def _build_graph(self, learning_rate, epoch, is_training):
-        from tf_utils.layers import conv, max_pool, rescale_bilinear, avg_pool
-
-        def layer_width(layer: int):  # number of channels (features per pixel)
-            return min([4 * 4**(layer + 1), 64])
+        from layers import conv, resnet
 
         # Input image and labels placeholders
         input_shape = [None] + list(self.input_shape)
@@ -45,16 +55,13 @@ class BaselineA(AbstractModel):
         input = tf.placeholder(tf.float32, shape=input_shape)
         target = tf.placeholder(tf.float32, shape=output_shape)
 
-        # Downsampled input (to improve speed at the cost of accuracy)
-        h = rescale_bilinear(input, 0.5)
-
         # Hidden layers
-        h = conv(h, 3, layer_width(0))
-        h = tf.nn.relu(h)
-        for l in range(1, self.conv_layer_count):
-            h = max_pool(h, 2)
-            h = conv(h, 3, layer_width(l))
-            h = tf.nn.relu(h)
+        h = resnet(
+            input,
+            base_width=self.base_width,
+            widening_factor=self.widening_factor,
+            group_lengths=self.group_lengths,
+            is_training=is_training)
 
         # Pixelwise softmax classification and label upscaling
         logits = conv(h, 1, self.class_count)
@@ -66,6 +73,12 @@ class BaselineA(AbstractModel):
         ts = lambda x: x[:, :, :, 1:] if self.class0_unknown else x
         loss = -tf.reduce_mean(ts(target) * tf.log(ts(clipped_probs)))
 
+        # Regularization
+        vars = tf.global_variables()
+        weight_vars = filter(lambda x: 'weights' in x.name, vars)
+        l2reg = tf.reduce_sum(list(map(tf.nn.l2_loss, weight_vars)))
+        loss += self.weight_decay * l2reg
+
         # Optimization
         optimizer = tf.train.AdamOptimizer(learning_rate)
         training_step = optimizer.minimize(loss)
@@ -76,6 +89,8 @@ class BaselineA(AbstractModel):
         # Other evaluation measures
         accuracy = tf.reduce_mean(
             tf.cast(tf.equal(preds, dense_labels), tf.float32))
+
+        #writer = tf.summary.FileWriter('logs', self._sess.graph)
 
         return AbstractModel.EssentialNodes(
             input=input,

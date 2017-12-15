@@ -1,11 +1,10 @@
 import numpy as np
-import skimage, matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+import skimage
 
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # semseg/*
-from data import Dataset
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))  # /*
 import matplotlib as mpl
-from processing.encoding import normalize
 
 
 def get_colors(n, black_first=True):
@@ -17,10 +16,8 @@ def get_colors(n, black_first=True):
     ]
     return colors
 
-
 def fuse_images(im1, im2, a):
     return a * im1 + (1 - a) * im2
-
 
 def colorify_label(lab, colors):
     plab = np.empty(list(lab.shape) + [3])
@@ -72,7 +69,46 @@ def get_multi_result_visualization(images,
     ], 0)
 
 
-class Visualizer:
+class Viewer:
+    """
+        Press "q" to close the window. Press anything else to change the displayed
+        composite image. Press "a" to return to the previous image.
+    """
+
+    def __init__(self, name=None):
+        self.name = name
+
+    def display(self, data, mapping=lambda x: x):
+        import matplotlib as mpl
+        mpl.use('wxAgg')
+
+        i = 0
+
+        def on_press(event):
+            nonlocal i
+            if event.key == 'a':
+                i -= 1
+            elif event.key == 'q':
+                plt.close(event.canvas.figure)
+                return
+            else:
+                i += 1
+            i = i % data.size
+            imgplot.set_data(mapping(data[i]))
+            fig.canvas.set_window_title(str(i))
+            fig.canvas.draw()
+
+        fig, ax = plt.subplots()
+        fig.canvas.mpl_connect('key_press_event', on_press)
+        fig.canvas.set_window_title('0')
+        imgplot = ax.imshow(mapping(data[0]))
+        plt.show()
+
+
+from data import Dataset
+#from processing.encoding import normalize
+
+class SemSegViewer:
     """
         Press "q" to close the window. Press anything else to change the displayed
         composite image. Press "a" to return to the previous image.
@@ -88,7 +124,7 @@ class Visualizer:
         colors = get_colors(dataset.class_count, black_first=True)
 
         def get_frame(im, lab):
-            nim = normalize(im)
+            nim = skimage.img_as_float(im)
             clab = colorify_label(lab, colors)
             cplab = colorify_label(predictor(im), colors)
             return get_result_visualization(nim, clab, cplab)
@@ -114,4 +150,3 @@ class Visualizer:
         fig.canvas.set_window_title('0')
         imgplot = ax.imshow(get_frame(*dataset[0]))
         plt.show()
-
