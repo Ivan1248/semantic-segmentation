@@ -2,7 +2,7 @@
 
 Parts of the code are are based on [this project](https://bitbucket.org/Ivan1248/semantic-image-segmentation-by-deep-convolutional-networks/).
 
-## Code and data organization (outdated and updating it seems not to be worth the effort)
+## Code and data organization (outdated)
 ``` tex
 semseg
 ├── storage  % data (not code): datasets, trained models, log-files, ...
