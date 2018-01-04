@@ -34,16 +34,11 @@ semseg
 :.
 ```
 
-## How to contribute
-1. decide that you don't want to feel bad later
-2. look below
-
 ## Tasks
 #### High priority
-- implement evaluation measures used in [FCN](https://arxiv.org/pdf/1411.4038.pdf) and [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy
-- evaluate
+- implement evaluation measures used in [LinkNet](https://arxiv.org/pdf/1707.03718.pdf) and modify `evaluation.py` so that it makes use of numpy/scipy
+- evaluate our LinkNet
 - implement inference time measurement depending on mini-batch size (to compare with the results in the LinkNet paper)
-- fix model saving and loading
 - write the report
 #### Medium priority
 - nothing
@@ -52,7 +47,7 @@ semseg
 - make a baseline similar to `BaselineA` that uses strided convolutions instead of pooling layers (use 3x3 conv with stride 2 instead of pool->conv)
 - try IoU loss (like [here](http://angusg.com/writing/2016/12/28/optimizing-iou-semantic-segmentation.html))
 #### Work in progress
-- almost everything ~ Ivan
+- finish saving and loading of trained models ~ Ivan
 - implement LinkNet ~ Josip
 #### Completed
 - make data loading work (`data.preparers.Iccv09Preparer, data.Dataset`)
