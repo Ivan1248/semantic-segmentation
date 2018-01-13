@@ -9,6 +9,6 @@ def find_in_ancestor(path_end):
         return None
 
 
-SAVED_MODELS = find_in_ancestor('data/models')
-LOGS = find_in_ancestor('data/logs')
-DATASETS = find_in_ancestor('projects/datasets')
+SAVED_MODELS = find_in_ancestor('storage/models')
+LOGS = find_in_ancestor('storage/logs')
+DATASETS = find_in_ancestor('storage/datasets')

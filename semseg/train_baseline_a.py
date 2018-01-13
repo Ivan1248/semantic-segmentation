@@ -1,5 +1,6 @@
 import sys
 import os
+sys.path.append(os.path.dirname(__file__))  # semseg/*
 from data import Dataset
 from data.preparers import Iccv09Preparer
 import dirs

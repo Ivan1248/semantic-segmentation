@@ -290,3 +290,4 @@ def resnet(x,
                         reuse=reuse,
                         scope='block' + str(j))
         return _bn_relu(h, 'BNReLU1')
+    
