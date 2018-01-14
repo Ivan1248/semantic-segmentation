@@ -77,10 +77,15 @@ class BaselineA(AbstractModel):
         accuracy = tf.reduce_mean(
             tf.cast(tf.equal(preds, dense_labels), tf.float32))
 
+        mIoU, mIou_update_op = tf.metrics.mean_iou(preds, dense_labels, self.class_count)
+        with tf.control_dependencies([mIou_update_op]):
+            mIoU = tf.identity(mIoU)
+
         return AbstractModel.EssentialNodes(
             input=input,
             target=target,
             probs=probs,
             loss=loss,
             training_step=training_step,
-            evaluation={'accuracy': accuracy})
+            evaluation={'accuracy': accuracy,
+                        'mIoU': mIoU})

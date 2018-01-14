@@ -51,6 +51,7 @@ class AbstractModel(object):
         self.nodes = self._build_graph(lr, self._epoch, self._is_training)
 
         self._sess.run(tf.global_variables_initializer())
+        self._sess.run(tf.local_variables_initializer())
 
         self.training_log_period = training_log_period
         self.log = []
