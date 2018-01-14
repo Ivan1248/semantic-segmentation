@@ -204,6 +204,7 @@ def residual_block(x,
                    width=16,
                    first_block=False,
                    bn_decay=default_arg(batch_normalization, 'decay'),
+                   force_downsampling=False,
                    reuse: bool = None,
                    scope: str = None):
     '''
@@ -228,17 +229,19 @@ def residual_block(x,
 
     x_width = x.shape[-1].value
     dim_increase = width > x_width
+    downsampling = dim_increase or force_downsampling
     with var_scope(scope, 'ResBlock', [x], reuse=reuse):
         r = x
         for i, ksize in enumerate(kind.ksizes):
             r = _bn_relu(r, str(i)) if not (first_block and i == 0) else r
-            r = _conv(r, ksize, 1 + int(dim_increase and i == 0), str(i))
+            r = _conv(r, ksize, 1 + int(downsampling and i == 0), str(i))
             if i in kind.dropout_locations:
                 r = dropout(r, kind.dropout_rate, training=is_training)
-        if dim_increase:
+        if downsampling:
             if kind.dim_increase == 'id':
                 x = avg_pool(x, 2, padding='VALID')
-                x = tf.pad(x, 3 * [[0, 0]] + [[0, width - x_width]])
+                if dim_increase:
+                    x = tf.pad(x, 3 * [[0, 0]] + [[0, width - x_width]])
             elif kind.dim_increase in ['conv1', 'conv3']:
                 x = _bn_relu(x, 'skip')  # TODO: check
                 x = _conv(x, int(kind.dim_increase[-1]), 2, 'skip')
