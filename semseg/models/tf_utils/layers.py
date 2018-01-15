@@ -58,7 +58,6 @@ def conv(x,
 def conv_transp(x,
                 ksize,
                 width,
-                output_shape,
                 stride=1,
                 padding='SAME',
                 bias=True,
@@ -74,11 +73,13 @@ def conv_transp(x,
     :param bias: add biases
     '''
     with var_scope(scope, 'ConvT', [x], reuse=reuse):
-        tf.nn.conv2d_transpose(
+        N, H, W, C = int(x.shape[0]), int(x.shape[1]), int(x.shape[2]), int(x.shape[3])
+        output_shape = [N, stride*H, stride*W, width]
+        h = tf.nn.conv2d_transpose(
             x,
             filter=conv_weight_variable(ksize, x.shape[-1].value, width),
             output_shape=output_shape,
-            strides=[stride] * 2,
+            strides=[1] + [stride] * 2 + [1],
             padding=padding)
         if bias:
             h += bias_variable(width)
