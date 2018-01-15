@@ -48,17 +48,18 @@ class LinkNet(AbstractModel):
 
         new_input_shape = [input.shape[0].value] + [256, 320, 3]
 
+
+        new_input = tf.image.resize_image_with_crop_or_pad(input, target_height=new_input_shape[1], target_width=new_input_shape[2])
         # Hidden layers
-        input = tf.pad(input, [[0, 0], [8, 8], [0,0], [0,0]])
         logits = linknet(
-            input,
+            new_input,
             n_classes=self.class_count,
             is_training=is_training)
-        logits = tf.image.resize_nearest_neighbor(logits, size=output_shape[1:3])
+        new_logits = tf.image.resize_image_with_crop_or_pad(logits, target_height=output_shape[1], target_width=output_shape[2])
 
         # Pixelwise softmax classification and label upscaling
-        probs = tf.nn.softmax(logits)
-        probs = tf.image.resize_bilinear(probs, output_shape[1:3])
+        probs = tf.nn.softmax(new_logits)
+        # probs = tf.image.resize_bilinear(probs, output_shape[1:3])
 
         # Loss
         clipped_probs = tf.clip_by_value(probs, 1e-10, 1.0)

@@ -83,7 +83,8 @@ def conv_transp(x,
             padding=padding)
         if bias:
             h += bias_variable(width)
-        return h
+        # return h
+        return tf.layers.conv2d_transpose(x, width, ksize, stride, padding=padding, use_bias=bias, activation=None, name=scope, reuse=reuse)
 
 
 # Pooling
