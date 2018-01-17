@@ -22,7 +22,7 @@ model = BaselineA(
     class0_unknown=True,
     batch_size=16,
     learning_rate_policy={
-        'boundaries': [60, 120, 160],
+        'boundaries': [50, 80, 110],
         'values': [1e-4 * 0.2**i for i in range(4)]
     },
     name='BaselineA-bs16',
@@ -30,7 +30,8 @@ model = BaselineA(
 
 print("Starting training and validation loop...")
 from training import train
-train(model, ds_train, ds_val, epoch_count=200)
+train(model, ds_trainval, ds_test, epoch_count=140)
+model.test(ds_test)
 
 print("Saving model...")
 """import datetime

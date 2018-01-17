@@ -27,7 +27,7 @@ def get_linket(input_shape, class_count):
         class0_unknown=True,
         batch_size=16,
         learning_rate_policy={
-            'boundaries': [60, 120, 160],
+            'boundaries': [50, 80, 110],
             'values': [1e-3 * 0.2**i for i in range(4)]
         },
         weight_decay=5e-4,
@@ -40,10 +40,9 @@ model = get_linket(image_shape, class_count)
 
 print("Starting training and validation loop...")
 from training import train
-train(model, ds_train, ds_val, epoch_count=200)
+train(model, ds_trainval, ds_test, epoch_count=140)
+model.test(ds_test)
 
 print("Saving model...")
-"""import datetime
-model.save_state(dirs.SAVED_MODELS + '/wrn-%d-%d.' % (zaggydepth, k) +
-                 datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"))
-"""
+import datetime
+model.save_state(dirs.SAVED_MODELS + '/linknet.' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"))

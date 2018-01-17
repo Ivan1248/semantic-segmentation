@@ -36,7 +36,7 @@ def get_wide_resnet(n, k, input_shape, class_count, dim_increase='conv1'):
         class0_unknown=True,
         batch_size=16,
         learning_rate_policy={
-            'boundaries': [60, 120, 160],
+            'boundaries': [50, 80, 110],
             'values': [1e-3 * 0.2**i for i in range(4)]
         },
         block_kind=ResidualBlockKind(
@@ -59,10 +59,10 @@ model = get_wide_resnet(
 
 print("Starting training and validation loop...")
 from training import train
-train(model, ds_train, ds_val, epoch_count=200)
+train(model, ds_trainval, ds_test, epoch_count=140)
+model.test(ds_test)
 
 print("Saving model...")
-"""import datetime
+import datetime
 model.save_state(dirs.SAVED_MODELS + '/wrn-%d-%d.' % (zaggydepth, k) +
                  datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"))
-"""
